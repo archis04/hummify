@@ -13,7 +13,7 @@ export const uploadAudio = createAsyncThunk(
         headers: { "Content-Type": "multipart/form-data" },
       });
       console.log("Upload success", response.data);
-      return response.data.url;
+      return response.data;
     } catch (err) {
       // return rejectWithValue(err.response?.data?.error || "Upload failed");
       console.error("Upload failed:", err.response?.data || err.message);
@@ -52,6 +52,10 @@ const audioSlice = createSlice({
       .addCase(uploadAudio.fulfilled, (state, action) => {
         state.loading = false;
         state.audioUrl = action.payload;
+        console.log(action);
+        
+        
+        
       })
       .addCase(uploadAudio.rejected, (state, action) => {
         state.loading = false;

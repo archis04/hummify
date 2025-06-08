@@ -7,8 +7,6 @@
     "dev": "nodemon server.js",
     "start": "node server.js"
   },
-  
-
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -23,8 +21,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.15.1",
     "multer": "^2.0.1",
-    "multer-storage-cloudinary": "^4.0.0",
     "nodemon": "^3.1.10",
+    "pitchfinder": "^2.3.2",
     "streamifier": "^0.1.1"
   }
 }
