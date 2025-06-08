@@ -7,19 +7,20 @@ const cloudinary = require("../helpers/cloudinary.js")
  */
 exports.uploadAudio = async (req, res) => {
   try {
-    // multer has already stored file info in req.file
-    // req.file.path is the local temp path; since we're using multer-storage-cloudinary, req.file already has cloudinary info
+    console.log("📦 req.file =", req.file);
 
-    const { secure_url, public_id, original_filename } = req.file;
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file uploaded" });
+    }
 
-    // Create a new Audio document
     const newAudio = new Audio({
-      url: secure_url,
-      public_id,
-      original_filename,
+      url: req.file.path, // ✅ Use 'path' as Cloudinary URL
+      public_id: req.file.filename, // ✅ Use 'filename' as Cloudinary ID
+      original_filename: req.file.originalname, // ✅ Original filename
     });
 
     const savedAudio = await newAudio.save();
+
     return res.status(201).json({ success: true, data: savedAudio });
   } catch (error) {
     console.error("Error uploading audio:", error);

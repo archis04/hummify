@@ -46,9 +46,11 @@ export default function Upload() {
     e.preventDefault();
 
     if (!audioBlob) return;
+    console.log(audioBlob);
     const formData = new FormData();
     // “audio” must exactly match the field name multer expects
     formData.append("audio", audioBlob, `recording_${Date.now()}.webm`);
+    console.log(formData);
     dispatch(uploadAudio(formData));
   };
 

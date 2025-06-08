@@ -1,19 +1,19 @@
 // frontend/src/features/audio/AudioList.jsx
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getAudios,deleteAudio } from "../../redux/audioSlice.js";
+// import { getAudio } from "../../redux/audioSlice.js";
 
 export default function AudioList() {
   const dispatch = useDispatch();
   const { audios, loading, error } = useSelector((state) => state.audio);
 
-  useEffect(() => {
-    dispatch(getAudios());
-  }, [dispatch]);
+  // useEffect(() => {
+  //   dispatch(getAudios());
+  // }, [dispatch]);
 
-  const handleDelete = (id) => {
-    dispatch(deleteAudio(id));
-  };
+  // const handleDelete = (id) => {
+  //   dispatch(deleteAudio(id));
+  // };
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-4">
@@ -34,7 +34,7 @@ export default function AudioList() {
               <audio controls src={audio.url} />
             </div>
             <button
-              onClick={() => handleDelete(audio._id)}
+              // onClick={() => handleDelete(audio._id)}
               className="px-3 py-1 bg-red-500 text-white rounded-lg shadow"
             >
               Delete

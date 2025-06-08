@@ -1,98 +1,63 @@
-// frontend/src/features/audio/audioSlice.js
+// frontend/src/redux/audioSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { uploadAudioFile,deleteAudioById,fetchAllAudios } from "../api/audioApi";
+import axios from "axios";
 
-// Thunks
+// Thunk for uploading audio directly from here
 export const uploadAudio = createAsyncThunk(
   "audio/uploadAudio",
-  async (formData, thunkAPI) => {
+  async (formData,
+    // { rejectWithValue }
+  ) => {
     try {
-      const response = await uploadAudioFile(formData);
-      return response.data;
-    } catch (error) {
-      return thunkAPI.rejectWithValue(error.response.data);
+      const response = await axios.post("http://localhost:5000/api/audio/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("Upload success", response.data);
+      return response.data.url;
+    } catch (err) {
+      // return rejectWithValue(err.response?.data?.error || "Upload failed");
+      console.error("Upload failed:", err.response?.data || err.message);
     }
-  }
-);
+    // try {
+    //   const res = await axios.post("http://localhost:5000/api/audio/upload", formData, {
+    //     headers: {
+    //       "Content-Type": "multipart/form-data",
+    //     },
+    //   });
+    //   console.log("Upload success", res.data);
+    // } catch (error) {
+    //   console.error("Upload failed:", error.response?.data || error.message);
+    // }
 
-export const getAudios = createAsyncThunk(
-  "audio/getAudios",
-  async (_, thunkAPI) => {
-    try {
-      const response = await fetchAllAudios();
-      return response.data;
-    } catch (error) {
-      return thunkAPI.rejectWithValue(error.response.data);
-    }
-  }
-);
-
-export const deleteAudio = createAsyncThunk(
-  "audio/deleteAudio",
-  async (id, thunkAPI) => {
-    try {
-      await deleteAudioById(id);
-      return id;
-    } catch (error) {
-      return thunkAPI.rejectWithValue(error.response.data);
-    }
   }
 );
 
 const audioSlice = createSlice({
   name: "audio",
   initialState: {
-    audios: [],
     loading: false,
     error: null,
+    audioUrl: null,
   },
   reducers: {},
   extraReducers: (builder) => {
-    // Upload
     builder
       .addCase(uploadAudio.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.audioUrl = null;
+        console.log(state.loading);
+
       })
       .addCase(uploadAudio.fulfilled, (state, action) => {
         state.loading = false;
-        state.audios.unshift(action.payload); // add to front
+        state.audioUrl = action.payload;
       })
       .addCase(uploadAudio.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || "Upload failed";
-      });
-
-    // Fetch
-    builder
-      .addCase(getAudios.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(getAudios.fulfilled, (state, action) => {
-        state.loading = false;
-        state.audios = action.payload;
-      })
-      .addCase(getAudios.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload?.message || "Fetch failed";
-      });
-
-    // Delete
-    builder
-      .addCase(deleteAudio.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(deleteAudio.fulfilled, (state, action) => {
-        state.loading = false;
-        state.audios = state.audios.filter(
-          (audio) => audio._id !== action.payload
-        );
-      })
-      .addCase(deleteAudio.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload?.message || "Delete failed";
+        state.error = action.payload;
+        console.log(state.error);
+        
       });
   },
 });
