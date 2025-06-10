@@ -1,69 +1,88 @@
 // backend/controllers/audioController.js
 const Audio = require("../models/Audio.js");
-const cloudinary = require("../helpers/cloudinary.js")
+const {cloudinary,upload} = require("../helpers/cloudinary.js")
 const { spawn } = require("child_process");
 const path = require("path");
+const InstrumentAudio = require("../models/InstrumentAudio.js");
+const synthesize=require("../python/synth.py")
+const fs = require('fs');
+const streamifier = require("streamifier");
 
-/**
- * Upload audio to Cloudinary and save metadata to MongoDB
- */
 const uploadAudio = async (req, res) => {
   try {
-    console.log("📦 req.file =", req.file);
-
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
 
+    const streamUpload = (req) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "audio_uploads",
+            resource_type: "video",
+          },
+          (error, result) => {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(error);
+            }
+          }
+        );
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
+      });
+    };
+
+    const result = await streamUpload(req);
+
     const newAudio = new Audio({
-      url: req.file.path, // ✅ Use 'path' as Cloudinary URL
-      public_id: req.file.filename, // ✅ Use 'filename' as Cloudinary ID
-      original_filename: req.file.originalname, // ✅ Original filename
+      url: result.secure_url,
+      public_id: result.public_id,
+      original_filename: result.original_filename,
     });
 
     const savedAudio = await newAudio.save();
 
     return res.status(201).json({ success: true, data: savedAudio });
   } catch (error) {
-    console.error("Error uploading audio:", error);
-    return res.status(500).json({ success: false, message: "Server Error" });
+    console.error("Upload failed:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+
 const generateInstrumentAudio = async (req, res) => {
   try {
-    const { notes } = req.body; // e.g., ["C4", "D4", "E4"]
+    const { notes, instrument } = req.body;
 
-    const scriptPath = path.join(__dirname, "../python/synth.py");
-    const sf2Path = path.join(__dirname, "../python/GeneralUser.sf2");
+    if (!Array.isArray(notes) || notes.length === 0) {
+      return res.status(400).json({ success: false, message: "No notes provided." });
+    }
 
-    const py = spawn("python", [scriptPath, notes.join(","), sf2Path]);
+    // TODO: Replace this with real synthesis logic (Node-Python or pure Node MIDI)
+    const filePath = await synthesizeNotesToAudio(notes, instrument); // .wav or .mp3 temp file
 
-    let result = "";
-    py.stdout.on("data", (data) => {
-      result += data.toString();
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder: "instrument_output",
+      resource_type: "video",
     });
 
-    py.stderr.on("data", (err) => {
-      console.error("Python error:", err.toString());
+    // Delete local temp file after upload
+    fs.unlinkSync(filePath);
+
+    const newInstrumentAudio = new InstrumentAudio({
+      url: result.secure_url,
+      public_id: result.public_id,
+      original_notes: notes,
+      instrument_type: instrument,
     });
 
-    py.on("close", async (code) => {
-      const outputFile = result.trim(); // like output_123456.wav
+    const saved = await newInstrumentAudio.save();
 
-      // Upload this outputFile to Cloudinary
-      const cloudinaryUpload = await cloudinary.uploader.upload(outputFile, {
-        resource_type: "video", folder: "instrument_outputs"
-      });
-
-      // Delete local file
-      fs.unlinkSync(outputFile);
-
-      res.json({ success: true, url: cloudinaryUpload.secure_url });
-    });
+    return res.status(201).json({ success: true, data: saved });
   } catch (error) {
-    console.error("Instrument generation failed:", error);
-    res.status(500).json({ success: false, message: "Server Error" });
+    console.error("Instrument audio generation error:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
