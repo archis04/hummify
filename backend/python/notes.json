@@ -1,0 +1,5 @@
+[
+  { "note": "F♯3", "start": 0.72, "end": 1.44, "duration": 0.72, "volume": 0.032 },
+  { "note": "C♯4", "start": 1.44, "end": 2.252, "duration": 0.813, "volume": 0.097 },
+  { "note": "A3",   "start": 2.252, "end": 3.019, "duration": 0.766, "volume": 0.054 }
+]

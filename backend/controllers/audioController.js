@@ -3,8 +3,6 @@ const Audio = require("../models/Audio.js");
 const {cloudinary,upload} = require("../helpers/cloudinary.js")
 const { spawn } = require("child_process");
 const path = require("path");
-const InstrumentAudio = require("../models/InstrumentAudio.js");
-const synthesize=require("../python/synth.py")
 const fs = require('fs');
 const streamifier = require("streamifier");
 
@@ -51,40 +49,40 @@ const uploadAudio = async (req, res) => {
 };
 
 
-const generateInstrumentAudio = async (req, res) => {
-  try {
-    const { notes, instrument } = req.body;
+// const generateInstrumentAudio = async (req, res) => {
+//   try {
+//     const { notes, instrument } = req.body;
 
-    if (!Array.isArray(notes) || notes.length === 0) {
-      return res.status(400).json({ success: false, message: "No notes provided." });
-    }
+//     if (!Array.isArray(notes) || notes.length === 0) {
+//       return res.status(400).json({ success: false, message: "No notes provided." });
+//     }
 
-    // TODO: Replace this with real synthesis logic (Node-Python or pure Node MIDI)
-    const filePath = await synthesizeNotesToAudio(notes, instrument); // .wav or .mp3 temp file
+//     // TODO: Replace this with real synthesis logic (Node-Python or pure Node MIDI)
+//     const filePath = await synthesizeNotesToAudio(notes, instrument); // .wav or .mp3 temp file
 
-    const result = await cloudinary.uploader.upload(filePath, {
-      folder: "instrument_output",
-      resource_type: "video",
-    });
+//     const result = await cloudinary.uploader.upload(filePath, {
+//       folder: "instrument_output",
+//       resource_type: "video",
+//     });
 
-    // Delete local temp file after upload
-    fs.unlinkSync(filePath);
+//     // Delete local temp file after upload
+//     fs.unlinkSync(filePath);
 
-    const newInstrumentAudio = new InstrumentAudio({
-      url: result.secure_url,
-      public_id: result.public_id,
-      original_notes: notes,
-      instrument_type: instrument,
-    });
+//     const newInstrumentAudio = new InstrumentAudio({
+//       url: result.secure_url,
+//       public_id: result.public_id,
+//       original_notes: notes,
+//       instrument_type: instrument,
+//     });
 
-    const saved = await newInstrumentAudio.save();
+//     const saved = await newInstrumentAudio.save();
 
-    return res.status(201).json({ success: true, data: saved });
-  } catch (error) {
-    console.error("Instrument audio generation error:", error);
-    return res.status(500).json({ success: false, message: "Server Error" });
-  }
-};
+//     return res.status(201).json({ success: true, data: saved });
+//   } catch (error) {
+//     console.error("Instrument audio generation error:", error);
+//     return res.status(500).json({ success: false, message: "Server Error" });
+//   }
+// };
 
 
 // /**
@@ -126,5 +124,5 @@ const generateInstrumentAudio = async (req, res) => {
 // };
 module.exports = {
   uploadAudio,
-  generateInstrumentAudio
+  // generateInstrumentAudio
 };

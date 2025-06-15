@@ -8,11 +8,13 @@ const {cloudinary,upload} = require("../helpers/cloudinary.js");
 const {uploadAudio,generateInstrumentAudio} = require("../controllers/audioController.js");
 // const { detectPitch } = require("../controllers/detectPitchController.js");
 const { analyzeAudio } = require("../controllers/analyzeController.js");
+const {convertAudio} = require("../controllers/convertController.js");
 
 router.post("/upload", upload.single("audio"), uploadAudio);
 // router.post("/generate", generateInstrumentAudio);
 // router.post("/detect-pitch", detectPitch);
 router.post("/analyze", analyzeAudio);
+router.post("/convert",convertAudio)
 
 // @route   GET /api/audio/
 // @desc    Get all audios
