@@ -19,9 +19,8 @@ def check_soundfont(sf2_path):
     if not os.path.exists(sf2_path):
         print(f"Error: Soundfont file not found at {sf2_path}", file=sys.stderr)
         print("Please download FluidR3_GM.sf2 and place it in the backend/python directory", file=sys.stderr)
-        print("You can download it from: https://member.keymusician.com/Member/FluidR3_GM/", file=sys.stderr)
         return False
-    return True
+    return True 
 
 def notes_to_midi(note_objs, midi_path, program, is_drum=False):
     try:

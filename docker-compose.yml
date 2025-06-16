@@ -5,7 +5,15 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - CLIENT_URL=http://localhost:5173
+      - CLIENT_URL
+      - MONGO_URI
+      - CLOUDINARY_URL
+      - CLOUDINARY_CLOUD_NAME
+      - CLOUDINARY_API_SECRET
+      - CLOUDINARY_API_KEY
+      - PORT
+    env_file:
+      - .env
   frontend:
     build: ./frontend
     ports:

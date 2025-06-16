@@ -55,7 +55,7 @@ try:
                 "start": round(start, 3),
                 "end": round(end, 3),
                 "duration": round(duration, 3),
-                "volume": round(float(avg_amp), 3)
+                "volume": round(float(avg_amp), 3)*127
             })
 
     filtered_notes = [
