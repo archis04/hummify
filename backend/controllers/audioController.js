@@ -32,6 +32,7 @@ const uploadAudio = async (req, res) => {
     };
 
     const result = await streamUpload(req);
+    // fs.writeFileSync(path.join(__dirname, "../python/latest_url.txt"), result.secure_url);
 
     const newAudio = new Audio({
       url: result.secure_url,
@@ -49,80 +50,8 @@ const uploadAudio = async (req, res) => {
 };
 
 
-// const generateInstrumentAudio = async (req, res) => {
-//   try {
-//     const { notes, instrument } = req.body;
 
-//     if (!Array.isArray(notes) || notes.length === 0) {
-//       return res.status(400).json({ success: false, message: "No notes provided." });
-//     }
-
-//     // TODO: Replace this with real synthesis logic (Node-Python or pure Node MIDI)
-//     const filePath = await synthesizeNotesToAudio(notes, instrument); // .wav or .mp3 temp file
-
-//     const result = await cloudinary.uploader.upload(filePath, {
-//       folder: "instrument_output",
-//       resource_type: "video",
-//     });
-
-//     // Delete local temp file after upload
-//     fs.unlinkSync(filePath);
-
-//     const newInstrumentAudio = new InstrumentAudio({
-//       url: result.secure_url,
-//       public_id: result.public_id,
-//       original_notes: notes,
-//       instrument_type: instrument,
-//     });
-
-//     const saved = await newInstrumentAudio.save();
-
-//     return res.status(201).json({ success: true, data: saved });
-//   } catch (error) {
-//     console.error("Instrument audio generation error:", error);
-//     return res.status(500).json({ success: false, message: "Server Error" });
-//   }
-// };
-
-
-// /**
-
-//  * Get all uploaded audios
-//  */
-// exports.getAllAudios = async (req, res) => {
-//   try {
-//     const audios = await Audio.find().sort({ createdAt: -1 });
-//     return res.status(200).json({ success: true, data: audios });
-//   } catch (error) {
-//     console.error("Error fetching audios:", error);
-//     return res.status(500).json({ success: false, message: "Server Error" });
-//   }
-// };
-
-// /**
-//  * Delete an audio by ID (both from Cloudinary and MongoDB)
-//  */
-// exports.deleteAudio = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const audio = await Audio.findById(id);
-//     if (!audio) {
-//       return res.status(404).json({ success: false, message: "Audio not found" });
-//     }
-
-//     // Delete from Cloudinary
-//     await cloudinary.uploader.destroy(audio.public_id);
-
-//     // Delete from MongoDB
-//     await audio.remove();
-
-//     return res.status(200).json({ success: true, message: "Audio deleted" });
-//   } catch (error) {
-//     console.error("Error deleting audio:", error);
-//     return res.status(500).json({ success: false, message: "Server Error" });
-//   }
-// };
 module.exports = {
   uploadAudio,
-  // generateInstrumentAudio
+  
 };

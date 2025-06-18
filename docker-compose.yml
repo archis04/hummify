@@ -14,6 +14,10 @@ services:
       - PORT
     env_file:
       - .env
+    volumes:
+      - ./backend:/app          
+      - /app/node_modules 
+      
   frontend:
     build: ./frontend
     ports:

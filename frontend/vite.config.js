@@ -2,13 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),
+  plugins: [
+    react(),
     tailwindcss()
   ],
   server: {
-    host: '0.0.0.0',
+    host: '0.0.0.0',          // ✅ Allows access from browser via localhost
+    watch: {
+      usePolling: true,       // ✅ Fixes file change detection in Docker
+    },
     proxy: {
       '/api': {
         target: 'http://backend:5000',

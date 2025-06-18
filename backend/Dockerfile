@@ -1,25 +1,31 @@
 FROM node:20-bullseye
 
-# Install Python 3, Pip, and FluidSynth
+# Install Python and audio dependencies
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip fluidsynth && \
+    apt-get install -y python3 python3-pip fluidsynth libsndfile1 ffmpeg && \
     apt-get clean
 
-# Set working directory
 WORKDIR /app
 
-# Copy the entire project (including code and SoundFont)
-COPY . .
-
-# Install Node.js dependencies
 COPY package*.json ./
 RUN npm install
 
-# Install Python dependencies in one command
-RUN python3 -m pip install pretty_midi librosa midi2audio requests
+# Install Python dependencies with specific versions
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install \
+    tensorflow-cpu \ 
+    pretty_midi \
+    librosa==0.10.1 \
+    midi2audio \
+    requests \
+    watchdog \
+    crepe \
+    numpy \
+    soundfile \
+    audioread
 
-# Expose backend port
+COPY . .
+
 EXPOSE 5000
 
-# Run the app in development mode
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "npm run dev & python3 watcher.py"]

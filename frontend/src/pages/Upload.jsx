@@ -1,13 +1,14 @@
 import React, { useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { uploadAudio } from "../redux/audioSlice";
+import { uploadAudio,analyzeAudio,convertAudio,resetState } from "../redux/audioSlice";
 import { toast } from "react-toastify";
+import axios from "axios";
 import "react-toastify/dist/ReactToastify.css";
 
 const instruments = [
   "Acoustic Grand Piano", "Violin", "Flute", "Clarinet",
-  "Electric Guitar", "Trumpet", "Trombone", "Cello", "Xylophone",
-  "Sitar", "Harmonica", "Drum Kit"
+  "Electric Guitar", "Trumpet", "Trombone", "Cello",
+  "Xylophone", "Sitar", "Harmonica", "Drum Kit"
 ];
 
 export default function Upload() {
@@ -19,7 +20,9 @@ export default function Upload() {
   const [recording, setRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioURL, setAudioURL] = useState("");
+  const [convertedAudioUrl, setConvertedAudioUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
   const startRecording = async () => {
     if (!instrument) {
@@ -38,12 +41,10 @@ export default function Upload() {
 
       mediaRecorderRef.current.onstop = () => {
         const blob = new Blob(chunks, { type: "audio/webm" });
-
         if (blob.size > 5 * 1024 * 1024) {
-          toast.error("Recording is too large. Please keep it under 5MB.");
+          toast.error("Recording too large. Keep it under 5MB.");
           return;
         }
-
         setAudioBlob(blob);
         setAudioURL(URL.createObjectURL(blob));
         chunks = [];
@@ -52,21 +53,20 @@ export default function Upload() {
       mediaRecorderRef.current.start();
       setRecording(true);
 
-      // Stop after 10 seconds max
       setTimeout(() => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        if (mediaRecorderRef.current?.state === "recording") {
           mediaRecorderRef.current.stop();
           setRecording(false);
         }
       }, 10000);
     } catch (err) {
-      console.error("Could not start recording:", err);
+      console.error("Recording error:", err);
       toast.error("Failed to start recording.");
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+    if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop();
       setRecording(false);
     }
@@ -84,22 +84,49 @@ export default function Upload() {
     formData.append("instrument", instrument);
 
     setIsUploading(true);
+    setConvertedAudioUrl("");
     try {
-      await dispatch(uploadAudio(formData)).unwrap();
-      toast.success("Audio uploaded!! 🎉");
-      setAudioBlob(null);
-      setAudioURL("");
+      const uploaded = await dispatch(uploadAudio(formData));
+      console.log("Upload successful:", uploaded);
+      console.log("data",uploaded.data);
+      
+
+      const audioUrl = uploaded.payload.url;
+      console.log("Analyzing audio from:", audioUrl);
+
+      const analyzeRes = await axios.post("http://localhost:5000/api/audio/analyze", {
+        audioUrl,
+      });
+      console.log("analyze payload",analyzeRes.payload)
+      const notes = analyzeRes.payload.notes;
+      console.log("Detected notes:", notes);
+
+      if (!notes || notes.length === 0) {
+        toast.error("No notes detected.");
+        return;
+      }
+
+      setIsConverting(true);
+      const convertRes = await axios.post("http://localhost:5000/api/audio/convert", {
+        notes,
+        instrument,
+      });
+
+      console.log("Conversion result:", convertRes.payload);
+      setConvertedAudioUrl(convertRes.payload.url);
+      toast.success("Conversion complete 🎉");
     } catch (err) {
-      toast.error("Upload failed.");
-      console.error(err);
+      console.error("Upload/conversion error:", err);
+      toast.error("Something went wrong.");
     } finally {
       setIsUploading(false);
+      setIsConverting(false);
     }
   };
 
   return (
     <div className="max-w-xl mx-auto p-4 space-y-6">
-      <h2 className="text-2xl font-semibold text-center">🎶 Hummify Audio Upload</h2>
+      <h2 className="text-2xl font-semibold text-center">🎶 Hummify Upload</h2>
 
       {/* Instrument Selector */}
       <div className="flex flex-col space-y-2">
@@ -117,7 +144,7 @@ export default function Upload() {
         </select>
       </div>
 
-      {/* Recorder Button */}
+      {/* Recording Controls */}
       <div className="flex flex-col items-center space-y-4">
         {!recording ? (
           <button
@@ -136,13 +163,7 @@ export default function Upload() {
           </button>
         )}
 
-        {audioURL && (
-          <audio controls src={audioURL} className="mt-4 w-full"></audio>
-        )}
-
-        {isUploading && (
-          <p className="text-blue-600 font-medium">Uploading to Cloudinary...</p>
-        )}
+        {audioURL && <audio controls src={audioURL} className="mt-4 w-full"></audio>}
 
         {audioBlob && !isUploading && (
           <button
@@ -152,6 +173,16 @@ export default function Upload() {
           >
             {loading ? "Uploading..." : "📤 Upload to Server"}
           </button>
+        )}
+
+        {isUploading && <p className="text-blue-600 font-medium">Uploading audio...</p>}
+        {isConverting && <p className="text-yellow-600 font-medium">Converting to {instrument}...</p>}
+
+        {convertedAudioUrl && (
+          <div className="mt-6 w-full">
+            <h4 className="text-lg font-semibold">🎧 Final Instrumental Audio:</h4>
+            <audio controls src={convertedAudioUrl} className="w-full mt-2" />
+          </div>
         )}
 
         {error && <p className="text-red-600 mt-2">{error}</p>}

@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center space-y-6 bg-gradient-to-b from-blue-50 to-blue-100">
-      <h1 className="text-4xl font-bold">Welcome to AudioApp</h1>
+      <h1 className="text-4xl font-bold">Audio recording</h1>
       <div className="space-x-4">
         <Link
           to="/upload"
