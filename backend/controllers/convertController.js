@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const path = require("path");
 const fs = require("fs").promises;
 const cloudinary = require("cloudinary").v2;
@@ -12,44 +13,80 @@ const convertAudio = async (req, res) => {
   const wavPath = path.join(uploadsDir, "output.wav");
   const scriptPath = path.join(__dirname, "../python/synth.py");
 
-  // New: Normalize note names and ensure volume is integer 0-127
-  const sanitizedNotes = notes.map(n => ({
-    ...n,
-    note: n.note.replace(/♯/g, '#').replace(/♭/g, 'b'),
-    volume: Math.round(n.volume)  // Ensure integer volume
-  }));
+  // Enhanced note sanitization for humming conversion
+  const sanitizedNotes = notes.map(n => {
+    // Handle both analysis pipeline format and direct note arrays
+    const noteObj = n.note ? n : {note: n.note_name, ...n};
+    
+    return {
+      ...noteObj,
+      note: noteObj.note.replace(/♯/g, '#').replace(/♭/g, 'b'),
+      volume: Math.min(127, Math.max(1, Math.round(noteObj.volume || 100))),
+      // Add default values for new properties
+      vibrato: noteObj.vibrato || false,
+      breathy: noteObj.breathy || false,
+      confidence: noteObj.confidence || 1.0
+    };
+  });
 
   try {
     await fs.mkdir(uploadsDir, { recursive: true });
-    // Run Python script and capture output
-    const pythonOutput = await runPython(scriptPath, [instrument], sanitizedNotes);
     
-    // Parse Python output
-    const result1 = JSON.parse(pythonOutput);
-    if (result1.status === "error") {
-      throw new Error(`Python script error: ${result1.message}`);
+    // Run Python script with instrument argument
+    const result = await runPython(scriptPath, [instrument], sanitizedNotes);
+    // Parse Python output with enhanced response format
+    
+    if (result.status === "error") {
+      throw new Error(`Python script error: ${result.message}`);
     }
+    // const mp3Path = path.join(uploadsDir, "output.mp3");
+    // await convertToMP3(wavPath, mp3Path);
 
-    const result = await cloudinary.uploader.upload(wavPath, {
+    // Upload the processed WAV file
+    const cloudinaryResult = await cloudinary.uploader.upload(wavPath, {
       resource_type: "video",
-      folder: "hummify_audio"
+      folder: "hummify_audio",
+      // audio_codec: 'aac',
+      // bit_rate: 192000
     });
 
+    // Create database document with additional metadata
     const audioDoc = await ConvertAudio.create({
-      notes: sanitizedNotes,  // Store sanitized notes
+      notes: sanitizedNotes,
       instrument,
-      cloudinaryUrl: result.secure_url
+      cloudinaryUrl: cloudinaryResult.secure_url,
+      tempo: result.tempo || 120,
+      duration: cloudinaryResult.duration
     });
 
-    await fs.unlink(midiPath).catch(() => {});
-    await fs.unlink(wavPath).catch(() => {});
+    // Cleanup all intermediate files
+    await Promise.allSettled([
+      fs.unlink(midiPath),
+      fs.unlink(wavPath),
+      fs.unlink(path.join(uploadsDir, "raw_output.wav")).catch(() => {})
+    ]);
 
-    res.json({ id: audioDoc._id, url: result.secure_url });
+  //   await Promise.allSettled([
+  //   fs.unlink(midiPath),
+  //   fs.unlink(wavPath),
+  //   fs.unlink(mp3Path),
+  //   fs.unlink(path.join(uploadsDir, "raw_output.wav")).catch(() => {})
+  // ]);
+
+    res.json({ 
+      id: audioDoc._id, 
+      url: cloudinaryResult.secure_url,
+      tempo: audioDoc.tempo,
+      duration: audioDoc.duration
+    });
+    
   } catch (err) {
     console.error("convertAudio error:", err);
+    
+    // Enhanced error information
     res.status(500).json({ 
-      error: err.message || "Internal error", 
-      details: err.stderr || err.stack 
+      error: err.message || "Audio conversion failed",
+      details: err.response?.data || err.stack 
     });
   }
 };

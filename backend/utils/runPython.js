@@ -1,11 +1,13 @@
+// runPython.js
 const { spawn } = require('child_process');
 
 module.exports = function runPython(scriptPath, args, inputData) {
   return new Promise((resolve, reject) => {
     const pythonProcess = spawn('python3', [scriptPath, ...args]);
     
-    // Write input data to stdin
-    pythonProcess.stdin.write(JSON.stringify(inputData));
+    if (inputData !== undefined) {
+      pythonProcess.stdin.write(JSON.stringify(inputData));
+    }
     pythonProcess.stdin.end();
     
     let stdout = '';
@@ -25,9 +27,8 @@ module.exports = function runPython(scriptPath, args, inputData) {
       }
       
       try {
-        // Attempt to parse JSON output
-        const output = JSON.parse(stdout);
-        resolve(output);
+        // Return parsed JSON instead of raw string
+        resolve(JSON.parse(stdout));
       } catch (e) {
         reject(new Error(`Invalid JSON from Python: ${stdout}\n${stderr}`));
       }

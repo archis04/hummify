@@ -12,18 +12,25 @@ services:
       - CLOUDINARY_API_SECRET
       - CLOUDINARY_API_KEY
       - PORT
+      - CHOKIDAR_USEPOLLING=true  
+      - CHOKIDAR_INTERVAL=1000
+      - NODE_ENV=development
     env_file:
       - .env
     volumes:
       - ./backend:/app          
       - /app/node_modules 
-      
+    restart: unless-stopped
+   
   frontend:
     build: ./frontend
     ports:
       - "5173:5173"
+    environment:
+      - VITE_WATCH=true 
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    restart: unless-stopped
     depends_on:
       - backend
