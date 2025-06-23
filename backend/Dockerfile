@@ -21,9 +21,10 @@ RUN apt-get update -o DPkg::Lock::Timeout=60 -qq && \
         libasound2-dev \
         libportaudio2 \
         portaudio19-dev \
-        rubberband-cli && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+        rubberband-cli \
+        sox &&  \
+        apt-get clean && \
+        rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -63,7 +64,12 @@ RUN python3 -m pip install --no-cache-dir --default-timeout=300 \
         pyworld \
         webrtcvad \
         pyrubberband==0.3.0 \
-        scikit-learn
+        scikit-learn \
+        torch \
+        torchaudio
+
+# 🔸 ADD: Set environment variable to suppress TensorFlow logs
+ENV TF_CPP_MIN_LOG_LEVEL=3
 
 # Clear pip cache
 RUN python3 -m pip cache purge

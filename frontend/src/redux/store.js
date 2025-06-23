@@ -1,9 +1,10 @@
-// frontend/src/app/store.js
-import { configureStore } from "@reduxjs/toolkit";
-import audioReducer from "../redux/audioSlice.js";
+import { configureStore } from '@reduxjs/toolkit';
+import instrumentReducer from '../redux/instrumentSlice'
+import audioReducer from '../redux/audioSlice';
 
-export const store = configureStore({
+export default configureStore({
   reducer: {
+    instrument: instrumentReducer,
     audio: audioReducer,
   },
 });

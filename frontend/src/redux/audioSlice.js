@@ -1,96 +1,86 @@
-// redux/audioSlice.js
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
-// Upload to Cloudinary & MongoDB
-export const uploadAudio = createAsyncThunk("audio/upload", async (formData) => {
-  const res = await axios.post("/api/audio/upload", formData);
-  return res.data.data; // savedAudio document
+export const uploadAudio = createAsyncThunk('audio/upload', async (audioBlob) => {
+  const formData = new FormData();
+  formData.append('audio', audioBlob);
+  
+  const response = await fetch('/audio/upload', {
+    method: 'POST',
+    body: formData
+  });
+  return await response.json();
 });
 
-// Analyze pitch → notes
-export const analyzeAudio = createAsyncThunk("audio/analyze", async (audioUrl) => {
-  const res = await axios.post("/api/audio/analyze", { audioUrl });
-  return res.data; // { notes: [...] }
+export const analyzeAudio = createAsyncThunk('audio/analyze', async (audioUrl) => {
+  const response = await fetch('/audio/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ audioUrl })
+  });
+  return await response.json();
 });
 
-// Convert notes → instrument sound
-export const convertAudio = createAsyncThunk("audio/convert", async ({ notes, instrument }) => {
-  const res = await axios.post("/api/audio/convert", { notes, instrument });
-  return res.data; // { url: convertedAudioURL }
+export const convertAudio = createAsyncThunk('audio/convert', async ({ instrument, notes }) => {
+  const response = await fetch('/audio/convert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ instrument, notes })
+  });
+  return await response.json();
 });
 
 const audioSlice = createSlice({
-  name: "audio",
+  name: 'audio',
   initialState: {
-    loading: false,
-    error: null,
-    uploadedAudio: null,
-    notes: [],
-    convertedUrl: "",
-    stage: "", // e.g., "uploading", "uploaded", "analyzing", "analyzed", "converting", "done"
+    recording: null,
+    audioUrl: null,
+    analysis: null,
+    convertedAudio: null,
+    status: 'idle',
+    error: null
   },
   reducers: {
-    resetState: (state) => {
-      state.loading = false;
-      state.error = null;
-      state.uploadedAudio = null;
-      state.notes = [];
-      state.convertedUrl = "";
-      state.stage = "";
+    setRecording: (state, action) => {
+      state.recording = action.payload;
     },
+    resetProcess: (state) => {
+      state.audioUrl = null;
+      state.analysis = null;
+      state.convertedAudio = null;
+    }
   },
   extraReducers: (builder) => {
     builder
-      // Upload audio
       .addCase(uploadAudio.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.stage = "uploading";
+        state.status = 'uploading';
       })
       .addCase(uploadAudio.fulfilled, (state, action) => {
-        state.loading = false;
-        state.uploadedAudio = action.payload;
-        state.stage = "uploaded";
+        state.status = 'uploaded';
+        state.audioUrl = action.payload.audioUrl;
       })
-      .addCase(uploadAudio.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message;
-      })
-
-      // Analyze audio
       .addCase(analyzeAudio.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.stage = "analyzing";
+        state.status = 'analyzing';
       })
       .addCase(analyzeAudio.fulfilled, (state, action) => {
-        state.loading = false;
-        state.notes = action.payload.notes;
-        state.stage = "analyzed";
+        state.status = 'analyzed';
+        state.analysis = action.payload;
       })
-      .addCase(analyzeAudio.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message;
-      })
-
-      // Convert audio
       .addCase(convertAudio.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.stage = "converting";
+        state.status = 'converting';
       })
       .addCase(convertAudio.fulfilled, (state, action) => {
-        state.loading = false;
-        state.convertedUrl = action.payload.url;
-        state.stage = "done";
+        state.status = 'converted';
+        state.convertedAudio = action.payload;
       })
-      .addCase(convertAudio.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message;
-      });
-  },
+      .addMatcher(
+        action => action.type.endsWith('/rejected'),
+        (state, action) => {
+          state.status = 'failed';
+          state.error = action.error.message;
+        }
+      );
+  }
 });
 
-export const { resetState } = audioSlice.actions;
+export const { setRecording, resetProcess } = audioSlice.actions;
 export default audioSlice.reducer;
