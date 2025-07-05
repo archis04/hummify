@@ -1,12 +1,15 @@
+// frontend/src/components/Footer.js
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 
-const Footer = () => (
-  <Box component="footer" sx={{ py: 3, bgcolor: 'background.paper', mt: 'auto' }}>
-    <Typography variant="body2" color="text.secondary" align="center">
-      © {new Date().getFullYear()} Hummify - Convert your hums to instrumentals
-    </Typography>
-  </Box>
-);
+const Footer = () => {
+  return (
+    <Box sx={{ py: 3, bgcolor: 'primary.main', color: 'white', textAlign: 'center', mt: 'auto' }}>
+      <Typography variant="body2">
+        © {new Date().getFullYear()} Hummify. All rights reserved.
+      </Typography>
+    </Box>
+  );
+};
 
 export default Footer;

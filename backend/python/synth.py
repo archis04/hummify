@@ -75,17 +75,17 @@ def notes_to_midi(note_objs, midi_path, program, is_drum=False):
             )
             instr.notes.append(note)
             
-            # Add vibrato effect if detected
-            if obj.get("vibrato", False) and not is_drum:
-                # Add modulation controller (CC#1)
-                mod_time = start + (end - start) * 0.3
-                mod_depth = min(127, int(velocity * 0.8))
-                mod_event = pretty_midi.ControlChange(
-                    number=1,
-                    value=mod_depth,
-                    time=mod_time
-                )
-                instr.control_changes.append(mod_event)
+            # # Add vibrato effect if detected
+            # if obj.get("vibrato", False) and not is_drum:
+            #     # Add modulation controller (CC#1)
+            #     mod_time = start + (end - start) * 0.3
+            #     mod_depth = min(127, int(velocity * 0.8))
+            #     mod_event = pretty_midi.ControlChange(
+            #         number=1,
+            #         value=mod_depth,
+            #         time=mod_time
+            #     )
+            #     instr.control_changes.append(mod_event)
 
         pm.instruments.append(instr)
         pm.write(midi_path)

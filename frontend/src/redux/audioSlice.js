@@ -4,7 +4,7 @@ export const uploadAudio = createAsyncThunk('audio/upload', async (audioBlob) =>
   const formData = new FormData();
   formData.append('audio', audioBlob);
   
-  const response = await fetch('/audio/upload', {
+  const response = await fetch('/api/audio/upload', {
     method: 'POST',
     body: formData
   });
@@ -12,7 +12,7 @@ export const uploadAudio = createAsyncThunk('audio/upload', async (audioBlob) =>
 });
 
 export const analyzeAudio = createAsyncThunk('audio/analyze', async (audioUrl) => {
-  const response = await fetch('/audio/analyze', {
+  const response = await fetch('/api/audio/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ audioUrl })
@@ -21,7 +21,7 @@ export const analyzeAudio = createAsyncThunk('audio/analyze', async (audioUrl) =
 });
 
 export const convertAudio = createAsyncThunk('audio/convert', async ({ instrument, notes }) => {
-  const response = await fetch('/audio/convert', {
+  const response = await fetch('/api/audio/convert', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instrument, notes })
@@ -47,6 +47,7 @@ const audioSlice = createSlice({
       state.audioUrl = null;
       state.analysis = null;
       state.convertedAudio = null;
+      state.status = 'idle'; // Added: Reset status to idle on full process reset
     }
   },
   extraReducers: (builder) => {
@@ -56,21 +57,21 @@ const audioSlice = createSlice({
       })
       .addCase(uploadAudio.fulfilled, (state, action) => {
         state.status = 'uploaded';
-        state.audioUrl = action.payload.audioUrl;
+        state.audioUrl = action.payload.data.url; // Correct access
       })
       .addCase(analyzeAudio.pending, (state) => {
         state.status = 'analyzing';
       })
       .addCase(analyzeAudio.fulfilled, (state, action) => {
         state.status = 'analyzed';
-        state.analysis = action.payload;
+        state.analysis = action.payload.data; // Correct access
       })
       .addCase(convertAudio.pending, (state) => {
         state.status = 'converting';
       })
       .addCase(convertAudio.fulfilled, (state, action) => {
         state.status = 'converted';
-        state.convertedAudio = action.payload;
+        state.convertedAudio = action.payload.data; // Correct access
       })
       .addMatcher(
         action => action.type.endsWith('/rejected'),
@@ -81,6 +82,7 @@ const audioSlice = createSlice({
       );
   }
 });
+
 
 export const { setRecording, resetProcess } = audioSlice.actions;
 export default audioSlice.reducer;

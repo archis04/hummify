@@ -1,22 +1,15 @@
-version: '3'
+
 services:
   backend:
     build: ./backend
     ports:
       - "5000:5000"
     environment:
-      - CLIENT_URL
-      - MONGO_URI
-      - CLOUDINARY_URL
-      - CLOUDINARY_CLOUD_NAME
-      - CLOUDINARY_API_SECRET
-      - CLOUDINARY_API_KEY
-      - PORT
       - CHOKIDAR_USEPOLLING=true  
       - CHOKIDAR_INTERVAL=1000
       - NODE_ENV=development
     env_file:
-      - .env
+      - ./backend/.env
     volumes:
       - ./backend:/app          
       - /app/node_modules 
@@ -28,6 +21,7 @@ services:
       - "5173:5173"
     environment:
       - VITE_WATCH=true 
+      - VITE_BACKEND_URL=http://backend:5000
     volumes:
       - ./frontend:/app
       - /app/node_modules

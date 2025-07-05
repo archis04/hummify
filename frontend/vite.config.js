@@ -14,8 +14,9 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://backend:5000',
+        target:  process.env.VITE_BACKEND_URL,        
         changeOrigin: true,
+        secure: false,
       },
     },
   },

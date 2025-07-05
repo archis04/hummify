@@ -1,4 +1,3 @@
-
 import os
 import sys
 import subprocess
@@ -18,22 +17,32 @@ class PythonHandler(FileSystemEventHandler):
     def restart_script(self):
         if self.current_process:
             self.current_process.terminate()
+        
+        # Define the correct absolute path to audiotonotes.py
+        # watcher.py is at /app/watcher.py
+        # audiotonotes.py is at /app/python/audiotonotes.py
+        # So, we need to go into the 'python' subfolder from watcher.py's directory
+        audiotonotes_script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "python", "audiotonotes.py")
+        
         self.current_process = subprocess.Popen(
-            [sys.executable, "audiotonotes.py"],
+            [sys.executable, audiotonotes_script_path], # <--- CHANGE THIS LINE!
             stdin=sys.stdin,
             stdout=sys.stdout,
             stderr=sys.stderr
         )
 
 if __name__ == "__main__":
-    path = os.getcwd()
+    # The path to watch should be the 'python' folder, where the scripts it needs to watch are
+    # This is /app/python/ inside the container
+    path_to_watch = os.path.join(os.path.dirname(os.path.abspath(__file__)), "python") 
+    
     event_handler = PythonHandler()
     observer = Observer()
-    observer.schedule(event_handler, path, recursive=True)
+    observer.schedule(event_handler, path_to_watch, recursive=True)
     observer.start()
     
-    # Initial run
-    event_handler.restart_script()
+    # # Initial run
+    # event_handler.restart_script()
     
     try:
         while True:

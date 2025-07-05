@@ -1,157 +1,100 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setRecording, uploadAudio } from '../redux/audioSlice';
-import { Button, Box, Typography, LinearProgress, Card, CardContent } from '@mui/material';
+import { Button, Box, Typography, Card, CardContent } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 const AudioRecorder = () => {
   const dispatch = useDispatch();
-  const { recording } = useSelector(state => state.audio);
+  const { recording, status } = useSelector(state => state.audio);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedTime, setRecordedTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const mediaRecorderRef = useRef(null);
-  const audioRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const timerRef = useRef(null);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
-      
-      mediaRecorderRef.current.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
       };
-      
+
       mediaRecorderRef.current.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        dispatch(setRecording(audioUrl));
-        stream.getTracks().forEach(track => track.stop());
+        dispatch(setRecording(audioBlob));
+        // No immediate upload here, just set the recording in state
+        // Upload will be triggered by a button click
       };
-      
+
       mediaRecorderRef.current.start();
       setIsRecording(true);
-      setRecordedTime(0);
-      
-      timerRef.current = setInterval(() => {
-        setRecordedTime(time => {
-          if (time >= 60) stopRecording();
-          return time + 1;
-        });
-      }, 1000);
-    } catch (err) {
-      console.error('Recording failed:', err);
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Error accessing microphone. Please ensure permissions are granted.');
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
-      clearInterval(timerRef.current);
       setIsRecording(false);
     }
   };
 
   const handleUpload = () => {
-    const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-    dispatch(uploadAudio(blob));
-  };
-
-  const togglePlayback = () => {
-    if (isPlaying) {
-      audioRef.current.pause();
+    if (recording) {
+      dispatch(uploadAudio(recording));
     } else {
-      audioRef.current.play();
+      alert('No audio recorded to upload!');
     }
-    setIsPlaying(!isPlaying);
   };
-
-  useEffect(() => {
-    return () => {
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      }
-      clearInterval(timerRef.current);
-    };
-  }, []);
 
   return (
-    <Card sx={{ 
-    p: 3, 
-    boxShadow: 3,
-    background: 'linear-gradient(135deg, #fdfcfb 0%, #e2d1c3 100%)',
-    borderRadius: '12px'
-  }}>
-    <CardContent>
-      <Typography variant="h5" gutterBottom align="center" color="secondary">
-        Record Your Audio
-      </Typography>
-      
-      <Typography variant="body1" align="center" sx={{ mb: 3, color: 'text.secondary' }}>
-        Click below to record up to 60 seconds of audio
-      </Typography>
-      
-        
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
+    <Card sx={{
+      p: 3,
+      boxShadow: 3,
+      background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+      borderRadius: '12px'
+    }}>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          Record Your Hum:
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
           <Button
             variant="contained"
-            color={isRecording ? 'error' : 'primary'}
-            startIcon={isRecording ? <StopIcon /> : <MicIcon />}
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={recording && !isRecording}
+            color="primary"
+            startIcon={<MicIcon />}
+            onClick={startRecording}
+            disabled={isRecording || status === 'uploading' || status === 'analyzing' || status === 'converting'}
           >
-            {isRecording ? 'Stop Recording' : 'Start Recording'}
+            {isRecording ? 'Recording...' : 'Start Recording'}
           </Button>
-          
-          {recording && (
-            <Button
-              variant="outlined"
-              color="secondary"
-              startIcon={<PlayArrowIcon />}
-              onClick={togglePlayback}
-            >
-              {isPlaying ? 'Pause' : 'Play'} Preview
-            </Button>
-          )}
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<StopIcon />}
+            onClick={stopRecording}
+            disabled={!isRecording}
+          >
+            Stop Recording
+          </Button>
         </Box>
 
-        {isRecording && (
-          <Box sx={{ mt: 3 }}>
-            <LinearProgress 
-              variant="determinate" 
-              value={(recordedTime / 60) * 100} 
-              sx={{ height: 10, borderRadius: 5 }}
-            />
-            <Typography variant="body1" align="center" sx={{ mt: 1 }}>
-              {recordedTime}s / 60s
-            </Typography>
-          </Box>
-        )}
-
-        {recording && !isRecording && (
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleUpload}
-            >
-              Process Recording
-            </Button>
-          </Box>
-        )}
-
-        {recording && (
-          <audio 
-            ref={audioRef} 
-            src={recording} 
-            hidden 
-            onEnded={() => setIsPlaying(false)}
-          />
+        {recording && ( // Show upload button only if recording exists
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<UploadFileIcon />}
+            onClick={handleUpload}
+            disabled={status === 'uploading' || status === 'analyzing' || status === 'converting'}
+          >
+            Process Audio
+          </Button>
         )}
       </CardContent>
     </Card>
