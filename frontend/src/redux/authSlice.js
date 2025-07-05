@@ -1,31 +1,25 @@
 // frontend/src/redux/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { resetAudioState } from './audioSlice'; // Import the new action
 
-// Initial state for authentication
 const initialState = {
   user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null,
   token: localStorage.getItem('token') || null,
-  isAuthenticated: !!localStorage.getItem('token'), // True if token exists
-  loading: false, // For async operations
-  error: null, // To store any error messages
+  isAuthenticated: !!localStorage.getItem('token'),
+  loading: false,
+  error: null,
 };
 
-// Async Thunks for user authentication
 export const registerUser = createAsyncThunk(
   'auth/register',
-  async (userData, { rejectWithValue }) => {
+  async (userData, { rejectWithValue, dispatch }) => { // Added dispatch
     try {
       const response = await axios.post('/api/auth/register', userData);
-      // Backend should return user data and token on successful registration
+      dispatch(resetAudioState()); // Reset audio state on successful registration
       return response.data;
     } catch (error) {
-      // Extract the error message from the backend response
-      const message =
-        (error.response && error.response.data && error.response.data.error) ||
-        error.message ||
-        error.toString();
-      // Use rejectWithValue to pass the error message to the rejected action
+      const message = (error.response && error.response.data && error.response.data.error) || error.message || error.toString();
       return rejectWithValue(message);
     }
   }
@@ -33,16 +27,13 @@ export const registerUser = createAsyncThunk(
 
 export const loginUser = createAsyncThunk(
   'auth/login',
-  async (userData, { rejectWithValue }) => {
+  async (userData, { rejectWithValue, dispatch }) => { // Added dispatch
     try {
       const response = await axios.post('/api/auth/login', userData);
-      // Backend should return user data and token on successful login
+      dispatch(resetAudioState()); // Reset audio state on successful login
       return response.data;
     } catch (error) {
-      const message =
-        (error.response && error.response.data && error.response.data.error) ||
-        error.message ||
-        error.toString();
+      const message = (error.response && error.response.data && error.response.data.error) || error.message || error.toString();
       return rejectWithValue(message);
     }
   }
@@ -50,35 +41,28 @@ export const loginUser = createAsyncThunk(
 
 export const logoutUser = createAsyncThunk(
   'auth/logout',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, dispatch }) => { // Added dispatch
     try {
-      // Make a call to the backend logout endpoint (if you have one, or just clear local storage)
-      await axios.get('/api/auth/logout'); // Assumes your backend has a /api/auth/logout endpoint
-      // No data to return on successful logout, just handle local state clear
-      return true; // Indicate success
+      await axios.get('/api/auth/logout');
+      dispatch(resetAudioState()); // Reset audio state on successful logout
+      return true;
     } catch (error) {
-      const message =
-        (error.response && error.response.data && error.response.data.error) ||
-        error.message ||
-        error.toString();
-      // Even if backend logout fails, we'll try to clear local state in the extraReducer
+      const message = (error.response && error.response.data && error.response.data.error) || error.message || error.toString();
+      // Even if logout fails on backend, ensure client-side state (including audio) is cleared
+      dispatch(resetAudioState());
       return rejectWithValue(message);
     }
   }
 );
 
-
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    // If you need direct reducers for state manipulation (e.g., clearing errors manually)
     clearAuthError: (state) => {
       state.error = null;
     },
-    // This reducer is useful if you want to explicitly set the user and token
-    // for instance, if you get them from a redirect URL (less common with our setup now)
-    setAuth: (state, action) => {
+    setAuth: (state, action) => { // This reducer is probably not used with thunks for setting auth
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = true;
@@ -88,17 +72,16 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Register User
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
-        state.error = null; // Clear any previous errors when starting registration
+        state.error = null;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
-        state.error = null; // Clear error on success
+        state.error = null;
         localStorage.setItem('user', JSON.stringify(action.payload.user));
         localStorage.setItem('token', action.payload.token);
       })
@@ -107,22 +90,21 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
-        state.error = action.payload; // Set the error message from rejectWithValue
+        state.error = action.payload;
         localStorage.removeItem('user');
         localStorage.removeItem('token');
       })
 
-      // Login User
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
-        state.error = null; // Clear any previous errors when starting login
+        state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
-        state.error = null; // Clear error on success
+        state.error = null;
         localStorage.setItem('user', JSON.stringify(action.payload.user));
         localStorage.setItem('token', action.payload.token);
       })
@@ -131,12 +113,11 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
-        state.error = action.payload; // Set the error message
+        state.error = action.payload;
         localStorage.removeItem('user');
         localStorage.removeItem('token');
       })
 
-      // Logout User
       .addCase(logoutUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -152,16 +133,15 @@ const authSlice = createSlice({
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
-        // Even if the backend logout failed, we force local state clear for safety
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
-        state.error = action.payload; // Still show the error from backend if any
+        state.error = action.payload;
         localStorage.removeItem('user');
         localStorage.removeItem('token');
       });
   },
 });
 
-export const { clearAuthError, setAuth } = authSlice.actions; // Export clearAuthError action
+export const { clearAuthError, setAuth } = authSlice.actions;
 export default authSlice.reducer;

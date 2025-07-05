@@ -4,18 +4,26 @@ import { useSelector } from 'react-redux';
 import { Navigate, Outlet } from 'react-router-dom';
 
 const ProtectedRoute = () => {
-  const { user, isLoading } = useSelector((state) => state.auth);
+  // We use `isAuthenticated` from the authSlice to determine access.
+  // `loading` can be used to show a spinner while authentication state is being determined,
+  // preventing a premature redirect.
+  const { isAuthenticated, loading } = useSelector((state) => state.auth);
 
-  // If still loading, you might want to show a spinner or null
-  // before deciding to redirect. For simplicity, we'll assume
-  // user state is quickly determined.
-  if (isLoading) {
-    return <div>Loading authentication...</div>; // Or a spinner component
+  // If the authentication state is still loading (e.g., initial app load, checking token),
+  // we return null or a loading spinner to prevent flicker or incorrect redirection.
+  if (loading) {
+    return null; // Or <CircularProgress /> or <div>Loading authentication...</div>
   }
 
-  // If user is authenticated, render the child routes
-  // Outlet renders the nested route's component
-  return user ? <Outlet /> : <Navigate to="/login" replace />;
+  // If the user is NOT authenticated, redirect them to the login page.
+  // The key here is that this component ONLY redirects and does NOT render
+  // any "Not authorized" text or other UI directly.
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // If the user IS authenticated, render the nested routes.
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

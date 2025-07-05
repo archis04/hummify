@@ -3,7 +3,8 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { logoutUser } from '../redux/authSlice';
-import { resetProcess } from '../redux/audioSlice';
+// CORRECTED: Import resetAudioState instead of resetProcess
+import { resetAudioState } from '../redux/audioSlice'; 
 
 import {
   AppBar,
@@ -28,11 +29,12 @@ const Header = () => {
 
     try {
       console.log('Header: Dispatching logoutUser...');
-      await dispatch(logoutUser()).unwrap();
+      await dispatch(logoutUser()).unwrap(); // unwrap to handle rejections for try/catch
       console.log('Header: logoutUser completed successfully');
 
-      dispatch(resetProcess()); // Reset audio process state on logout
-      console.log('Header: resetProcess dispatched');
+      // CORRECTED: Dispatch resetAudioState
+      dispatch(resetAudioState()); // Reset audio process state on logout
+      console.log('Header: resetAudioState dispatched');
 
       navigate('/login'); // Redirect to login page after logout
       console.log('Header: Navigation to /login completed');
@@ -42,7 +44,8 @@ const Header = () => {
       // This ensures the UI reflects logged out state even if backend has issues
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      dispatch(resetProcess());
+      // CORRECTED: Dispatch resetAudioState in catch block too
+      dispatch(resetAudioState()); 
       navigate('/login');
       console.log('Header: Fallback logout completed');
     }

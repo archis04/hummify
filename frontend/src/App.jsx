@@ -2,7 +2,8 @@
 import React, { useEffect } from 'react';
 import {Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { analyzeAudio, convertAudio, resetProcess } from './redux/audioSlice';
+// CORRECTED: Import resetAudioState instead of resetProcess
+import { analyzeAudio, convertAudio, resetAudioState } from './redux/audioSlice'; 
 import {
   CssBaseline,
   Container,
@@ -14,7 +15,7 @@ import {
 // Import Layout Components
 import Header from './components/Header';
 import Footer from './components/Footer';
-import ProtectedRoute from './components/ProtectedRoute'; // Import our ProtectedRoute component
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Import Core App Features Components (now part of AppContentInner)
 import InstrumentSelector from './components/InstrumentSelector';
@@ -28,8 +29,6 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 
 // --- Inner Component for Authenticated User Content ---
-// This component will contain all the core Hummify features
-// and will only be rendered when the user is authenticated via ProtectedRoute.
 function AppContentInner() {
   const dispatch = useDispatch();
   const { audioUrl, status, analysis, convertedAudio } = useSelector(state => state.audio);
@@ -94,26 +93,20 @@ function AppContentInner() {
 
 // --- Root App Component ---
 function App() {
-  const { user } = useSelector((state) => state.auth); // Get user from Redux state
+  const { user } = useSelector((state) => state.auth);
 
-  // This useEffect will run once on component mount to log initial auth state,
-  // but it's not directly responsible for setting initial Redux state (that's in authSlice).
   useEffect(() => {
     console.log('App: Initial user state check. User:', user);
-  }, [user]); // Re-run if user object changes
+  }, [user]);
 
   return (
     <>
       <CssBaseline />
-      {/* Set up a flex container for full height layout */}
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <Header /> {/* Header will always be at the top */}
+        <Header />
 
-        {/* Main content area - grows to push footer down */}
         <Container maxWidth="md" sx={{ py: 4, flexGrow: 1 }}>
           <Routes>
-            {/* Routes accessible ONLY when NOT authenticated */}
-            {/* If user is logged in, redirect them from /login and /register to home */}
             <Route
               path="/login"
               element={user ? <Navigate to="/" replace /> : <Login />}
@@ -123,18 +116,10 @@ function App() {
               element={user ? <Navigate to="/" replace /> : <Register />}
             />
 
-            {/* Protected Routes (Accessible ONLY when authenticated) */}
-            {/* The content for the main Hummify features is now inside AppContentInner */}
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<AppContentInner />} />
-              {/* Add other protected routes here if you create them later, e.g.: */}
-              {/* <Route path="/profile" element={<ProfilePage />} /> */}
             </Route>
 
-            {/* Public Route Example (if you need one that's always accessible regardless of auth) */}
-            {/* <Route path="/about" element={<div>About Page</div>} /> */}
-
-            {/* Catch-all for undefined routes - redirects to home or login based on auth */}
             <Route
                 path="*"
                 element={user ? <Navigate to="/" replace /> : <Navigate to="/login" replace />}
@@ -142,10 +127,9 @@ function App() {
           </Routes>
         </Container>
 
-        <Footer /> {/* Footer will always be at the bottom */}
+        <Footer />
       </Box>
-      </>
-    
+    </>
   );
 }
 
