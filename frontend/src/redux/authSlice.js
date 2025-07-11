@@ -1,10 +1,19 @@
 // frontend/src/redux/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-import { resetAudioState } from './audioSlice'; // Import the new action
+import { resetAudioState } from './audioSlice';
+
+// ✅ Safe JSON parse
+const safeParse = (value) => {
+  try {
+    return value && value !== 'undefined' ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+};
 
 const initialState = {
-  user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null,
+  user: safeParse(localStorage.getItem('user')),
   token: localStorage.getItem('token') || null,
   isAuthenticated: !!localStorage.getItem('token'),
   loading: false,
@@ -13,13 +22,13 @@ const initialState = {
 
 export const registerUser = createAsyncThunk(
   'auth/register',
-  async (userData, { rejectWithValue, dispatch }) => { // Added dispatch
+  async (userData, { rejectWithValue, dispatch }) => {
     try {
       const response = await axios.post('/api/auth/register', userData);
-      dispatch(resetAudioState()); // Reset audio state on successful registration
+      dispatch(resetAudioState());
       return response.data;
     } catch (error) {
-      const message = (error.response && error.response.data && error.response.data.error) || error.message || error.toString();
+      const message = (error.response?.data?.error) || error.message || error.toString();
       return rejectWithValue(message);
     }
   }
@@ -27,13 +36,13 @@ export const registerUser = createAsyncThunk(
 
 export const loginUser = createAsyncThunk(
   'auth/login',
-  async (userData, { rejectWithValue, dispatch }) => { // Added dispatch
+  async (userData, { rejectWithValue, dispatch }) => {
     try {
       const response = await axios.post('/api/auth/login', userData);
-      dispatch(resetAudioState()); // Reset audio state on successful login
+      dispatch(resetAudioState());
       return response.data;
     } catch (error) {
-      const message = (error.response && error.response.data && error.response.data.error) || error.message || error.toString();
+      const message = (error.response?.data?.error) || error.message || error.toString();
       return rejectWithValue(message);
     }
   }
@@ -41,14 +50,13 @@ export const loginUser = createAsyncThunk(
 
 export const logoutUser = createAsyncThunk(
   'auth/logout',
-  async (_, { rejectWithValue, dispatch }) => { // Added dispatch
+  async (_, { rejectWithValue, dispatch }) => {
     try {
       await axios.get('/api/auth/logout');
-      dispatch(resetAudioState()); // Reset audio state on successful logout
+      dispatch(resetAudioState());
       return true;
     } catch (error) {
-      const message = (error.response && error.response.data && error.response.data.error) || error.message || error.toString();
-      // Even if logout fails on backend, ensure client-side state (including audio) is cleared
+      const message = (error.response?.data?.error) || error.message || error.toString();
       dispatch(resetAudioState());
       return rejectWithValue(message);
     }
@@ -62,7 +70,7 @@ const authSlice = createSlice({
     clearAuthError: (state) => {
       state.error = null;
     },
-    setAuth: (state, action) => { // This reducer is probably not used with thunks for setting auth
+    setAuth: (state, action) => {
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = true;
