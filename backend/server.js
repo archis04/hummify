@@ -3,57 +3,55 @@ require('dotenv').config({ path: './.env' });
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const cookieParser = require("cookie-parser"); // ✅ Needed to read cookies
 const connectDB = require('./db');
 
 // Import Routes
 const audioRoutes = require("./routes/audioRoutes.js");
 const authRoutes = require("./routes/authRoutes.js");
-const savedAudioRoutes = require("./routes/savedAudioRoutes.js"); // ADDED THIS LINE
+const savedAudioRoutes = require("./routes/savedAudioRoutes.js");
 
 // Import Cleanup Scheduler
-const cleanupScheduler = require('./utils/cleanupScheduler'); // ADDED THIS LINE
+const cleanupScheduler = require('./utils/cleanupScheduler');
 
 connectDB();
 
 const app = express();
 
+// ✅ Middleware for logging
 app.use((req, res, next) => {
-    console.log(`Incoming ${req.method} request to ${req.url}`);
-    next();
+  console.log(`Incoming ${req.method} request to ${req.url}`);
+  next();
 });
 
-// Middleware
+// ✅ Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser()); // ✅ Parse cookies
 
-// CORS config
+// ✅ CORS config for frontend <-> backend cookie/token exchange
 app.use(
-    cors({
-        origin: process.env.CLIENT_URL || "http://localhost:5173",
-        credentials: true,
-        methods: ["GET", "POST", "DELETE", "PUT"],
-        allowedHeaders: [
-            "Content-Type",
-            "Authorization",
-            "Cache-Control",
-            "Expires",
-            "Pragma",
-        ],
-    })
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST", "DELETE", "PUT"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
 
-// Routes
+// ✅ Routes
 app.use("/api/audio", audioRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/saved-audios", savedAudioRoutes); // ADDED THIS LINE
+app.use("/api/saved-audios", savedAudioRoutes);
 
-// 404 fallback
+// ✅ 404 fallback
 app.use((req, res) => {
-    return res.status(404).json({ success: false, message: "Endpoint not found" });
+  return res.status(404).json({ success: false, message: "Endpoint not found" });
 });
 
+// ✅ Server start
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    cleanupScheduler(); // Start the cleanup scheduler when the server starts
+  console.log(`Server running on port ${PORT}`);
+  cleanupScheduler();
 });
