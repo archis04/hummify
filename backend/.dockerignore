@@ -4,3 +4,8 @@ uploads
 .env
 __pycache__/
 *.pyc
+.git
+*.pyo
+*.pyd
+.vscode
+.DS_Store

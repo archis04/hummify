@@ -1,7 +1,7 @@
 // frontend/src/api/audioApi.js
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000/api/audio";
+const API_BASE_URL = "/api/audio";
 
 export const uploadAudioFile = async (formData) => {
   const config = {

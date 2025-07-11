@@ -3,8 +3,8 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { logoutUser } from '../redux/authSlice';
-// CORRECTED: Import resetAudioState instead of resetProcess
-import { resetAudioState } from '../redux/audioSlice'; 
+import { resetAudioState } from '../redux/audioSlice';
+import { resetSavedAudioState } from '../redux/savedAudioSlice'; // <-- NEW IMPORT FOR RESETTING SAVED AUDIO STATE
 
 import {
   AppBar,
@@ -12,6 +12,7 @@ import {
   Typography,
   Button,
   Link as MuiLink,
+  Box // Added Box for spacing
 } from '@mui/material';
 
 const Header = () => {
@@ -32,9 +33,9 @@ const Header = () => {
       await dispatch(logoutUser()).unwrap(); // unwrap to handle rejections for try/catch
       console.log('Header: logoutUser completed successfully');
 
-      // CORRECTED: Dispatch resetAudioState
       dispatch(resetAudioState()); // Reset audio process state on logout
-      console.log('Header: resetAudioState dispatched');
+      dispatch(resetSavedAudioState()); // <-- NEW: Reset saved audio state on logout
+      console.log('Header: resetAudioState & resetSavedAudioState dispatched');
 
       navigate('/login'); // Redirect to login page after logout
       console.log('Header: Navigation to /login completed');
@@ -44,8 +45,8 @@ const Header = () => {
       // This ensures the UI reflects logged out state even if backend has issues
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      // CORRECTED: Dispatch resetAudioState in catch block too
-      dispatch(resetAudioState()); 
+      dispatch(resetAudioState());
+      dispatch(resetSavedAudioState()); // <-- NEW: Reset saved audio state in catch block too
       navigate('/login');
       console.log('Header: Fallback logout completed');
     }
@@ -60,23 +61,27 @@ const Header = () => {
           </MuiLink>
         </Typography>
         {user ? (
-          <>
-            <Typography variant="subtitle1" sx={{ mr: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="subtitle1" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
               Welcome, {user.name || user.email}
             </Typography>
+            {/* NEW LINK TO SAVED AUDIOS */}
+            <Button color="inherit" component={Link} to="/my-audios" sx={{ mr: 1 }}>
+              My Audios
+            </Button>
             <Button color="inherit" onClick={handleLogout}>
               Logout
             </Button>
-          </>
+          </Box>
         ) : (
-          <>
-            <Button color="inherit" onClick={() => navigate('/login')}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Button color="inherit" onClick={() => navigate('/login')} sx={{ mr: 1 }}>
               Login
             </Button>
             <Button color="inherit" onClick={() => navigate('/register')}>
               Register
             </Button>
-          </>
+          </Box>
         )}
       </Toolbar>
     </AppBar>

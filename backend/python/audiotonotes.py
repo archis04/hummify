@@ -221,7 +221,7 @@ def get_dominant_pitch(f0, confidences, start_frame, end_frame):
     
     return sorted_f0[median_idx], sorted_conf[median_idx]
 
-def apply_musical_corrections(notes, min_gap=0.05, min_duration=0.08, max_pitch_diff=0.5, min_volume_diff=10):
+def apply_musical_corrections(notes, min_gap=0.05, min_duration=0.05, max_pitch_diff=0.5, min_volume_diff=10):
     """Enhanced musical corrections with parameters matching the pipeline's characteristics
     
     Args:

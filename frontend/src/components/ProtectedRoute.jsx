@@ -2,6 +2,7 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { Navigate, Outlet } from 'react-router-dom';
+import CircularProgress from '@mui/material/CircularProgress';
 
 const ProtectedRoute = () => {
   // We use `isAuthenticated` from the authSlice to determine access.
@@ -12,7 +13,7 @@ const ProtectedRoute = () => {
   // If the authentication state is still loading (e.g., initial app load, checking token),
   // we return null or a loading spinner to prevent flicker or incorrect redirection.
   if (loading) {
-    return null; // Or <CircularProgress /> or <div>Loading authentication...</div>
+    return <CircularProgress /> ; // Or <CircularProgress /> or <div>Loading authentication...</div>
   }
 
   // If the user is NOT authenticated, redirect them to the login page.

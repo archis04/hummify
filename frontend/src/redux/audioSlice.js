@@ -1,4 +1,3 @@
-// frontend/src/redux/audioSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 // Helper function to extract error message from an HTTP response
@@ -86,9 +85,9 @@ const audioSlice = createSlice({
   initialState: {
     recording: null,
     audioUrl: null,
-    analysis: null,
-    convertedAudio: null,
-    status: 'idle',
+    analysis: null, // This should only be set once by analyzeAudio.fulfilled
+    convertedAudio: null, // This should only contain URL, publicId, tempo, duration
+    status: 'idle', // 'idle', 'uploading', 'uploaded', 'analyzing', 'analyzed', 'converting', 'converted', 'failed'
     error: null
   },
   reducers: {
@@ -96,6 +95,7 @@ const audioSlice = createSlice({
       state.recording = action.payload;
     },
     resetAudioState: (state) => {
+      // This is the ONLY place that should completely reset analysis to null for a new hum
       state.recording = null;
       state.audioUrl = null;
       state.analysis = null;
@@ -107,6 +107,20 @@ const audioSlice = createSlice({
       state.audioUrl = action.payload;
       state.status = 'uploaded';
       state.error = null;
+    },
+    // These reducers are generally for direct dispatch if needed, but not part of the primary thunk flow for initial setting
+    setAnalysis: (state, action) => {
+      state.analysis = action.payload;
+      state.status = 'analyzed'; 
+      state.error = null;
+    },
+    setAudioStatus: (state, action) => {
+        state.status = action.payload;
+    },
+    setConvertedAudio: (state, action) => {
+        state.convertedAudio = action.payload;
+        state.status = 'converted'; 
+        state.error = null;
     }
   },
   extraReducers: (builder) => {
@@ -117,59 +131,69 @@ const audioSlice = createSlice({
       })
       .addCase(uploadAudio.fulfilled, (state, action) => {
         state.status = 'uploaded';
-        // FIX: Access action.payload.data.url as backend returns { success: true, data: { url: ... } }
         state.audioUrl = action.payload.data.url;
         state.error = null;
+      })
+      .addCase(uploadAudio.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload || action.error.message || 'Upload failed.';
+        state.audioUrl = null;
       })
       .addCase(analyzeAudio.pending, (state) => {
         state.status = 'analyzing';
         state.error = null;
+        state.analysis = null; // Clear analysis while new analysis is pending
+        state.convertedAudio = null; // Also clear converted audio if new analysis starts
       })
       .addCase(analyzeAudio.fulfilled, (state, action) => {
         state.status = 'analyzed';
-        // FIX: Access action.payload.data.notes as backend returns { success: true, data: { notes: [...] } }
-        // Assuming the `result` from runPython is directly the notes array or object with notes.
-        // If `result` itself is `[{note: 'C4', ...}]`, then `action.payload.data` will be `[{note: 'C4', ...}]`.
-        // In that specific case, it would be `state.analysis = action.payload.data;`.
-        // However, based on the context of 'analysis' usually containing a 'notes' field,
-        // `action.payload.data.notes` is the more common and safer assumption for structured data.
-        // If your Python script's output (returned by `runPython`) is just the notes array,
-        // and that's what's put into `data`, then `action.payload.data` itself *is* the notes.
-        // For now, assuming `data: { notes: [...] }`
-        state.analysis = action.payload.data.notes;
+        state.analysis = action.payload.data.notes; // This is the source of truth for initial analysis
         state.error = null;
+      })
+      .addCase(analyzeAudio.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload || action.error.message || 'Analysis failed.';
+        state.analysis = null; // Clear analysis on failure
+        state.convertedAudio = null; // Clear converted audio on failure
       })
       .addCase(convertAudio.pending, (state) => {
         state.status = 'converting';
         state.error = null;
-        state.convertedAudio = null
+        state.convertedAudio = null; // Clear previous converted audio during new conversion
+        // IMPORTANT: DO NOT reset state.analysis here. We are re-converting based on existing analysis.
       })
       .addCase(convertAudio.fulfilled, (state, action) => {
         state.status = 'converted';
-        // IMPORTANT: action.payload is the entire response.data from the axios call.
-        // This response.data contains a 'data' property which holds the actual converted audio info.
-        // So, we need to assign action.payload.data to state.convertedAudio.
         if (action.payload && action.payload.data) {
-          state.convertedAudio = action.payload.data;
+            // FIX APPLIED HERE: Explicitly extract only the desired properties for convertedAudio
+            // This prevents any 'notes' or 'analysis' data from the backend's convert response
+            // from implicitly being assigned to state.convertedAudio and causing confusion.
+            const { url, cloudinaryPublicId, tempo, duration } = action.payload.data;
+            state.convertedAudio = { url, cloudinaryPublicId, tempo, duration };
         } else {
-          // Fallback or error handling if the payload structure is unexpected
-          console.error("convertAudio.fulfilled: Payload data structure is not as expected.", action.payload);
-          state.error = "Invalid converted audio data received.";
-          state.status = "failed";
+            console.error("convertAudio.fulfilled: Payload data structure is not as expected.", action.payload);
+            state.error = "Invalid converted audio data received.";
+            state.status = "failed";
         }
       })
-      .addMatcher(
-        action => action.type.endsWith('/rejected'),
-        (state, action) => {
-          state.status = 'failed';
-          state.error = action.payload || action.error.message || 'An unknown error occurred.';
-          state.audioUrl = null;
-          state.analysis = null;
-          state.convertedAudio = null;
-        }
-      );
+      .addCase(convertAudio.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload || action.error.message || 'Conversion failed.';
+        // IMPORTANT: DO NOT reset state.analysis here. Keep the original analysis even if conversion fails.
+        state.convertedAudio = null; // Clear converted audio on failure
+      });
+      // Ensure there is NO generic addMatcher for all rejected actions here.
+      // Specific rejections for each thunk are preferred.
   }
 });
 
-export const { setRecording, resetAudioState, setAudioUrl } = audioSlice.actions;
+export const {
+  setRecording,
+  resetAudioState,
+  setAudioUrl,
+  setAnalysis,
+  setAudioStatus,
+  setConvertedAudio
+} = audioSlice.actions;
+
 export default audioSlice.reducer;
