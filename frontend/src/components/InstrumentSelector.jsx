@@ -55,7 +55,7 @@ const InstrumentSelector = () => {
             </Typography>
             
             <Typography variant="body1" align="center" sx={{ mb: 3, color: 'text.secondary' }}>
-              Choose from our collection of professional instruments
+              Select your sound — from classic to contemporary
             </Typography>
             
             <FormControl fullWidth sx={{ mb: 3 }}>

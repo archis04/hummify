@@ -94,6 +94,9 @@ const AudioRecorder = () => {
         <Typography variant="h6" gutterBottom>
           Record Your Audio
         </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+    Tip: Hum in a clear rhythmic pattern like <strong>“pa pa pa”</strong>, preferably in a quiet environment for best results.
+  </Typography>
         <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
           <Button
             variant="contained"
