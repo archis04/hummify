@@ -37,13 +37,13 @@ RUN pip3 install --no-cache-dir tensorflow-cpu==2.10.0
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # ---------- Copy Backend Code (including .sf2 files) ----------
-COPY backend .  # includes server.js, routes/, python/, etc.
+COPY backend . 
 
 # ---------- Copy and Build Frontend ----------
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
-COPY frontend .  # ✅ includes index.html and src/
+COPY frontend .  
 RUN npm run build
 
 # ---------- Serve React Build from Backend ----------
