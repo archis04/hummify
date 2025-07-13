@@ -8,9 +8,17 @@ const connectDB = require('./db');
 const path = require('path');
 
 // Import Routes
+console.log("Importing audioRoutes...");
 const audioRoutes = require("./routes/audioRoutes.js");
+console.log("audioRoutes imported.");
+
+console.log("Importing authRoutes...");
 const authRoutes = require("./routes/authRoutes.js");
+console.log("authRoutes imported.");
+
+console.log("Importing savedAudioRoutes...");
 const savedAudioRoutes = require("./routes/savedAudioRoutes.js");
+console.log("savedAudioRoutes imported.");
 
 // Import Cleanup Scheduler
 const cleanupScheduler = require('./utils/cleanupScheduler');
@@ -39,9 +47,17 @@ app.use(cors({
 }));
 
 // ✅ API Routes
+console.log("Setting up /api/audio route...");
 app.use("/api/audio", audioRoutes);
+console.log("/api/audio route set up.");
+
+console.log("Setting up /api/auth route...");
 app.use("/api/auth", authRoutes);
+console.log("/api/auth route set up.");
+
+console.log("Setting up /api/saved-audios route...");
 app.use("/api/saved-audios", savedAudioRoutes);
+console.log("/api/saved-audios route set up.");
 
 const frontendPath = path.join(__dirname, '..', 'frontend', 'dist');
 
