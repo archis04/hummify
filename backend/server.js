@@ -42,13 +42,13 @@ app.use("/api/audio", audioRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/saved-audios", savedAudioRoutes);
 
-// ✅ Serve static frontend
-app.use(express.static(path.join(__dirname, 'client')));
+const frontendPath = path.join(__dirname, '..', 'frontend', 'dist');
 
-// ✅ Fallback for React routes
+app.use(express.static(frontendPath));
 app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'client', 'index.html'));
+  res.sendFile(path.resolve(frontendPath, 'index.html'));
 });
+
 
 // ❌ This should NOT come after React fallback
 // You can REMOVE this if you're already handling 404s in React
