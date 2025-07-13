@@ -18,8 +18,8 @@ RUN apt-get update -qq && \
         git-lfs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ---------- Enable Git LFS ----------
-RUN git lfs install
+# # ---------- Enable Git LFS ----------
+# RUN git lfs install
 
 # ---------- Set Working Directory ----------
 WORKDIR /app
@@ -27,8 +27,8 @@ WORKDIR /app
 # ---------- Copy All Files ----------
 COPY . .
 
-# ---------- Pull LFS Tracked Files (e.g., *.sf2) ----------
-RUN git lfs pull
+# # ---------- Pull LFS Tracked Files (e.g., *.sf2) ----------
+# RUN git lfs pull
 
 # ---------- Install Node Dependencies ----------
 RUN npm install
