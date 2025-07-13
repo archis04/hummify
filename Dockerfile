@@ -10,6 +10,7 @@ RUN apt-get update -qq && \
         build-essential \
         cmake \
         curl \
+        git \
         fluidsynth \
         ffmpeg \
         libsndfile1 \
@@ -26,7 +27,7 @@ RUN apt-get update -qq && \
         sox && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ---------- Enable Git LFS ----------
+# ---------- Enable Git LFS (for .sf2) ----------
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
     apt-get install -y git-lfs && \
     git lfs install || true
@@ -34,32 +35,34 @@ RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.d
 # ---------- Set Working Directory ----------
 WORKDIR /app
 
-# ---------- Copy and Install Node Dependencies ----------
-COPY package*.json ./
-RUN npm install --quiet
+# ---------- Copy & Install Backend Node Dependencies ----------
+COPY backend/package*.json ./backend/
+WORKDIR /app/backend
+RUN npm install
 
-# ---------- Upgrade pip & Install Python Dependencies ----------
-COPY requirements.txt ./
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3 && \
-    pip install --no-cache-dir tensorflow-cpu==2.10.0 && \
-    pip install --no-cache-dir -r requirements.txt
+# ---------- Copy & Build Frontend ----------
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend ./
+RUN npm run build
 
 # ---------- Copy App Code ----------
+WORKDIR /app
 COPY . .
 
-# ---------- Build Frontend ----------
-WORKDIR /app/frontend
-RUN npm install && npm run build
+# ---------- Install Python Dependencies ----------
+WORKDIR /app/backend
+COPY backend/requirements.txt ./requirements.txt
+RUN pip3 install --no-cache-dir tensorflow-cpu==2.10.0 && \
+    pip3 install --no-cache-dir -r requirements.txt
 
-# ---------- Back to root/backend ----------
-WORKDIR /app
-
-# ---------- Set Environment ----------
+# ---------- Set Environment Variables ----------
 ENV TF_CPP_MIN_LOG_LEVEL=3
 ENV PORT=5000
 
 # ---------- Expose Port ----------
 EXPOSE 5000
 
-# ---------- Start Backend (which serves built frontend) ----------
+# ---------- Start Backend (serves built frontend) ----------
 CMD ["node", "backend/server.js"]
