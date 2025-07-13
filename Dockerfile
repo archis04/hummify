@@ -14,32 +14,38 @@ RUN apt-get update -qq && \
         libportaudio2 \
         portaudio19-dev \
         rubberband-cli \
-        sox \
-        git-lfs && \
+        sox && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# # ---------- Enable Git LFS ----------
-# RUN git lfs install
+# ---------- Enable Git LFS (for .sf2) ----------
+RUN git lfs install || true
 
 # ---------- Set Working Directory ----------
 WORKDIR /app
 
-# ---------- Copy All Files ----------
-COPY . .
-
-# # ---------- Pull LFS Tracked Files (e.g., *.sf2) ----------
-# RUN git lfs pull
-
-# ---------- Install Node Dependencies ----------
+# ---------- Copy and Install Backend Dependencies ----------
+COPY backend ./backend
+WORKDIR /app/backend
+COPY backend/package*.json ./
 RUN npm install
 
-# ---------- Build React Frontend ----------
-RUN npm run build --prefix frontend
+# ---------- Copy and Build Frontend ----------
+WORKDIR /app
+COPY frontend ./frontend
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+RUN npm run build
+
+# ---------- Copy rest of the files ----------
+WORKDIR /app
+COPY . .
 
 # ---------- Install Python Dependencies ----------
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3 && \
-    pip install --no-cache-dir tensorflow-cpu==2.10.0 && \
-    pip install --no-cache-dir -r backend/requirements.txt
+WORKDIR /app/backend
+COPY backend/requirements.txt .
+RUN pip3 install --no-cache-dir tensorflow-cpu==2.10.0
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # ---------- Set Environment ----------
 ENV TF_CPP_MIN_LOG_LEVEL=3
@@ -48,5 +54,5 @@ ENV PORT=5000
 # ---------- Expose Port ----------
 EXPOSE 5000
 
-# ---------- Start Backend (serving frontend too) ----------
-CMD ["node", "backend/server.js"]
+# ---------- Start Backend (which serves frontend) ----------
+CMD ["node", "server.js"]
