@@ -1,10 +1,10 @@
-// backend/server.js
 require('dotenv').config({ path: './.env' });
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const cookieParser = require("cookie-parser"); // ✅ Needed to read cookies
+const cookieParser = require("cookie-parser");
 const connectDB = require('./db');
+const path = require('path');
 
 // Import Routes
 const audioRoutes = require("./routes/audioRoutes.js");
@@ -27,31 +27,29 @@ app.use((req, res, next) => {
 // ✅ Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser()); // ✅ Parse cookies
+app.use(cookieParser());
 
-// ✅ CORS config for frontend <-> backend cookie/token exchange
-app.use(
-  cors({
-    origin: 'https://hummify.onrender.com',
-    credentials: true,
-    methods: ["GET", "POST", "DELETE", "PUT"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+// ✅ CORS (now relaxed or can remove completely)
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "DELETE", "PUT"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
-// ✅ Routes
+// ✅ API Routes
 app.use("/api/audio", audioRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/saved-audios", savedAudioRoutes);
 
-// ✅ 404 fallback
-app.use((req, res) => {
-  return res.status(404).json({ success: false, message: "Endpoint not found" });
+// ✅ Serve static frontend
+app.use(express.static(path.join(__dirname, 'client')));
+
+// ✅ Fallback for React routes
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'client', 'index.html'));
 });
 
-// ✅ Server start
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  cleanupScheduler();
-});
+// ❌ This should NOT come after React fallback
+// You can REMOVE this if you're already handling 404s in React
+// If you keep it, move it *above* app.get('*')
