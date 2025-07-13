@@ -1,119 +1,39 @@
-// src/services/savedAudioService.js
-// Helper function to extract error message from an HTTP response (similar to your audioSlice)
-const getErrorMessage = async (response) => {
-  try {
-    const errorData = await response.json();
-    return errorData.message || errorData.error || response.statusText || 'An unknown error occurred.';
-  } catch (e) {
-    return response.statusText || 'An unknown error occurred.';
-  }
-};
+import axios from '../axios'; // This should have baseURL set to backend + withCredentials: true
 
-// Get user token from local storage
-const getToken = () => {
-  return localStorage.getItem('token');
-  return token ? token : null;
-};
-
-const API_URL = '/api/saved-audios'; // Let Vite handle proxy
-
-
-// --- API Calls ---
+// Base API path
+const API_URL = '/api/saved-audios';
 
 // Save a converted audio
 const saveConvertedAudio = async (audioData) => {
-  const token = getToken();
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(audioData),
-  });
-
-  if (!response.ok) {
-    const errorMessage = await getErrorMessage(response);
-    throw new Error(errorMessage);
-  }
-
-  return await response.json();
+  const response = await axios.post(API_URL, audioData);
+  return response.data; // Expects { success, data, message }
 };
 
 // Get all saved audios for the user
 const getSavedAudios = async () => {
-  const token = getToken();
-  const response = await fetch(API_URL, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const errorMessage = await getErrorMessage(response);
-    throw new Error(errorMessage);
-  }
-
-  return await response.json();
+  const response = await axios.get(API_URL);
+  return response.data;
 };
 
-// Get a single saved audio by ID (optional, but good to have)
+// Get a single saved audio by ID (optional)
 const getSavedAudioById = async (audioId) => {
-  const token = getToken();
-  const response = await fetch(`${API_URL}/${audioId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const errorMessage = await getErrorMessage(response);
-    throw new Error(errorMessage);
-  }
-
-  return await response.json();
+  const response = await axios.get(`${API_URL}/${audioId}`);
+  return response.data;
 };
 
 // Update a saved audio (e.g., rename)
 const updateSavedAudio = async (audioId, newAudioData) => {
-  const token = getToken();
-  const response = await fetch(`${API_URL}/${audioId}`, {
-    method: 'PUT', // Or PATCH depending on your backend
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(newAudioData),
-  });
-
-  if (!response.ok) {
-    const errorMessage = await getErrorMessage(response);
-    throw new Error(errorMessage);
-  }
-
-  return await response.json();
+  const response = await axios.put(`${API_URL}/${audioId}`, newAudioData);
+  return response.data;
 };
 
 // Delete a saved audio
 const deleteSavedAudio = async (audioId) => {
-  const token = getToken();
-  const response = await fetch(`${API_URL}/${audioId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const errorMessage = await getErrorMessage(response);
-    throw new Error(errorMessage);
-  }
-
-  return await response.json(); // Backend might return a success message
+  const response = await axios.delete(`${API_URL}/${audioId}`);
+  return response.data; // Backend should return { success, message }
 };
 
+// Export service methods
 const savedAudioService = {
   saveConvertedAudio,
   getSavedAudios,

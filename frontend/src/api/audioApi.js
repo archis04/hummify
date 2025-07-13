@@ -1,12 +1,12 @@
 // frontend/src/api/audioApi.js
-import axios from '../axios.js'
+import axios from '../axios.js';
 
-const API_BASE_URL = "/api/audio";
+const API_BASE_URL = '/api/audio';
 
 export const uploadAudioFile = async (formData) => {
   const config = {
     headers: {
-      "Content-Type": "multipart/form-data",
+      'Content-Type': 'multipart/form-data',
     },
   };
   const res = await axios.post(`${API_BASE_URL}/upload`, formData, config);

@@ -1,6 +1,5 @@
-// src/features/savedAudio/savedAudioSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import savedAudioService from '../services/savedAudioService';
+import savedAudioService from '../../services/savedAudioService';
 
 const initialState = {
   savedAudios: [],
@@ -10,7 +9,7 @@ const initialState = {
   message: '',
 };
 
-// Async Thunks for Saved Audio Operations
+// ─── Async Thunks ─────────────────────────────────────
 
 // Save a converted audio
 export const saveConvertedAudio = createAsyncThunk(
@@ -19,11 +18,7 @@ export const saveConvertedAudio = createAsyncThunk(
     try {
       return await savedAudioService.saveConvertedAudio(audioData);
     } catch (error) {
-      const message =
-        (error.response && error.response.data && error.response.data.message) ||
-        error.message ||
-        error.toString();
-      return thunkAPI.rejectWithValue(message);
+      return thunkAPI.rejectWithValue(error.message || 'Save failed');
     }
   }
 );
@@ -35,27 +30,19 @@ export const getSavedAudios = createAsyncThunk(
     try {
       return await savedAudioService.getSavedAudios();
     } catch (error) {
-      const message =
-        (error.response && error.response.data && error.response.data.message) ||
-        error.message ||
-        error.toString();
-      return thunkAPI.rejectWithValue(message);
+      return thunkAPI.rejectWithValue(error.message || 'Fetch failed');
     }
   }
 );
 
-// Update a saved audio (e.g., rename)
+// Update a saved audio
 export const updateSavedAudio = createAsyncThunk(
   'savedAudios/update',
   async ({ audioId, newAudioData }, thunkAPI) => {
     try {
       return await savedAudioService.updateSavedAudio(audioId, newAudioData);
     } catch (error) {
-      const message =
-        (error.response && error.response.data && error.response.data.message) ||
-        error.message ||
-        error.toString();
-      return thunkAPI.rejectWithValue(message);
+      return thunkAPI.rejectWithValue(error.message || 'Update failed');
     }
   }
 );
@@ -66,70 +53,68 @@ export const deleteSavedAudio = createAsyncThunk(
   async (audioId, thunkAPI) => {
     try {
       await savedAudioService.deleteSavedAudio(audioId);
-      return audioId; // Return the ID so we can remove it from state
+      return audioId;
     } catch (error) {
-      const message =
-        (error.response && error.response.data && error.response.data.message) ||
-        error.message ||
-        error.toString();
-      return thunkAPI.rejectWithValue(message);
+      return thunkAPI.rejectWithValue(error.message || 'Delete failed');
     }
   }
 );
 
+// ─── Slice ────────────────────────────────────────────
 
-// Saved Audio Slice
 export const savedAudioSlice = createSlice({
   name: 'savedAudios',
   initialState,
   reducers: {
-    resetSavedAudioState: (state) => initialState, // Reset all state for this slice
-    resetSavedAudioSuccess: (state) => { // Reset success state specifically
+    resetSavedAudioState: () => initialState,
+    resetSavedAudioSuccess: (state) => {
       state.isSuccess = false;
       state.message = '';
     }
   },
   extraReducers: (builder) => {
     builder
-      // saveConvertedAudio
+      // Save
       .addCase(saveConvertedAudio.pending, (state) => {
         state.isLoading = true;
+        state.isError = false;
       })
       .addCase(saveConvertedAudio.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.message = action.payload.message || 'Audio saved successfully!';
-        state.savedAudios.push(action.payload.data); // Add new audio to list
+        state.message = action.payload.message || 'Audio saved successfully';
+        state.savedAudios.push(action.payload.data);
       })
       .addCase(saveConvertedAudio.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
       })
-      // getSavedAudios
+
+      // Get All
       .addCase(getSavedAudios.pending, (state) => {
         state.isLoading = true;
       })
       .addCase(getSavedAudios.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.savedAudios = action.payload.data; // Set the list of saved audios
+        state.savedAudios = action.payload.data;
       })
       .addCase(getSavedAudios.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
-        state.savedAudios = []; // Clear audios on error
+        state.savedAudios = [];
       })
-      // updateSavedAudio
+
+      // Update
       .addCase(updateSavedAudio.pending, (state) => {
         state.isLoading = true;
       })
       .addCase(updateSavedAudio.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.message = 'Audio updated successfully!';
-        // Update the specific audio in the array
+        state.message = 'Audio updated successfully';
         state.savedAudios = state.savedAudios.map((audio) =>
           audio._id === action.payload.data._id ? action.payload.data : audio
         );
@@ -139,15 +124,15 @@ export const savedAudioSlice = createSlice({
         state.isError = true;
         state.message = action.payload;
       })
-      // deleteSavedAudio
+
+      // Delete
       .addCase(deleteSavedAudio.pending, (state) => {
         state.isLoading = true;
       })
       .addCase(deleteSavedAudio.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.message = 'Audio deleted successfully!';
-        // Remove the deleted audio from the state
+        state.message = 'Audio deleted successfully';
         state.savedAudios = state.savedAudios.filter(
           (audio) => audio._id !== action.payload
         );
