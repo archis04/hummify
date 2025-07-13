@@ -49,7 +49,8 @@ app.get('*', (req, res) => {
   res.sendFile(path.resolve(frontendPath, 'index.html'));
 });
 
-
-// ❌ This should NOT come after React fallback
-// You can REMOVE this if you're already handling 404s in React
-// If you keep it, move it *above* app.get('*')
+// Start the server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
