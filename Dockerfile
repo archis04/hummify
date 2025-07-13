@@ -65,4 +65,4 @@ ENV PORT=5000
 EXPOSE 5000
 
 # ---------- Start Backend (serves built frontend) ----------
-CMD ["node", "backend/server.js"]
+CMD ["node",  "server.js"]
