@@ -3,23 +3,14 @@ services:
     name: hummify
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile
+    autoDeploy: true
     envVars:
       - key: MONGO_URI
-        sync: false
       - key: CLOUDINARY_URL
-        sync: false
       - key: CLOUDINARY_CLOUD_NAME
-        sync: false
       - key: CLOUDINARY_API_KEY
-        sync: false
       - key: CLOUDINARY_API_SECRET
-        sync: false
-      - key: PORT
-        value: 5000
-      - key: CLIENT_URL
-        value: https://hummify.onrender.com
       - key: JWT_SECRET
-        sync: false
       - key: JWT_EXPIRE
-        value: 7d
+      - key: CLIENT_URL
+      - key: PORT
