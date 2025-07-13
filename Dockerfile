@@ -8,11 +8,17 @@ RUN apt-get update -qq && \
         python3-pip \
         python3-dev \
         build-essential \
-        git \
-        git-lfs \
+        cmake \
+        curl \
         fluidsynth \
         ffmpeg \
         libsndfile1 \
+        libaubio-dev \
+        libavcodec-dev \
+        libavformat-dev \
+        libavutil-dev \
+        libsamplerate0-dev \
+        libjack-dev \
         libasound2-dev \
         libportaudio2 \
         portaudio19-dev \
@@ -21,33 +27,32 @@ RUN apt-get update -qq && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ---------- Enable Git LFS ----------
-RUN git lfs install || true
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
+    apt-get install -y git-lfs && \
+    git lfs install || true
 
 # ---------- Set Working Directory ----------
 WORKDIR /app
 
-# ---------- Copy and Install Backend Dependencies ----------
-COPY backend/package*.json ./backend/
-WORKDIR /app/backend
-RUN npm install
+# ---------- Copy and Install Node Dependencies ----------
+COPY package*.json ./
+RUN npm install --quiet
 
-# ---------- Install Python Dependencies ----------
-COPY backend/requirements.txt ./
-RUN pip3 install --no-cache-dir tensorflow-cpu==2.10.0
-RUN pip3 install --no-cache-dir -r requirements.txt
+# ---------- Upgrade pip & Install Python Dependencies ----------
+COPY requirements.txt ./
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3 && \
+    pip install --no-cache-dir tensorflow-cpu==2.10.0 && \
+    pip install --no-cache-dir -r requirements.txt
 
-# ---------- Copy Backend Code (including .sf2 files) ----------
-COPY backend . 
+# ---------- Copy App Code ----------
+COPY . .
 
-# ---------- Copy and Build Frontend ----------
+# ---------- Build Frontend ----------
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend .  
-RUN npm run build
+RUN npm install && npm run build
 
-# ---------- Serve React Build from Backend ----------
-WORKDIR /app/backend
+# ---------- Back to root/backend ----------
+WORKDIR /app
 
 # ---------- Set Environment ----------
 ENV TF_CPP_MIN_LOG_LEVEL=3
@@ -56,5 +61,5 @@ ENV PORT=5000
 # ---------- Expose Port ----------
 EXPOSE 5000
 
-# ---------- Start Server ----------
-CMD ["node", "server.js"]
+# ---------- Start Backend (which serves built frontend) ----------
+CMD ["node", "backend/server.js"]
