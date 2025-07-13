@@ -1,6 +1,8 @@
-// frontend/src/axios.js
 import axios from 'axios';
 
-axios.defaults.withCredentials = true;
+const instance = axios.create({
+  baseURL: 'https://hummify-backend.onrender.com', // ✅ use your backend URL
+  withCredentials: true,
+});
 
-export default axios;
+export default instance;
