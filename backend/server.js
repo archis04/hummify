@@ -32,7 +32,7 @@ app.use(cookieParser()); // ✅ Parse cookies
 // ✅ CORS config for frontend <-> backend cookie/token exchange
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: 'https://hummify.onrender.com',
     credentials: true,
     methods: ["GET", "POST", "DELETE", "PUT"],
     allowedHeaders: ["Content-Type", "Authorization"],
