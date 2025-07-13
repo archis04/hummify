@@ -45,7 +45,7 @@ COPY . .
 WORKDIR /app/backend
 COPY backend/requirements.txt .
 RUN pip3 install --no-cache-dir tensorflow-cpu==2.10.0
-RUN pip3 install --no-cache-dir -r backend/requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 
 # ---------- Set Environment ----------
