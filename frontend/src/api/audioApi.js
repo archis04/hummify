@@ -1,5 +1,5 @@
 // frontend/src/api/audioApi.js
-import axios from "axios";
+import axios from '../axios.js'
 
 const API_BASE_URL = "/api/audio";
 

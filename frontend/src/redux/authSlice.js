@@ -1,6 +1,6 @@
 // frontend/src/redux/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import axios from '../axios.js'
 import { resetAudioState } from './audioSlice';
 
 // ✅ Safe JSON parse
