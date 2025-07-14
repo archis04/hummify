@@ -1,40 +1,75 @@
-# Use official Python base
-FROM python:3.9-slim
+# ---------- Base Image ----------
+FROM node:20-bullseye
 
-# Prevent prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
+# ---------- Install System Dependencies ----------
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-dev \
+        build-essential \
+        cmake \
+        curl \
+        git \
+        fluidsynth \
+        ffmpeg \
+        libsndfile1 \
+        libaubio-dev \
+        libavcodec-dev \
+        libavformat-dev \
+        libavutil-dev \
+        libsamplerate0-dev \
+        libjack-dev \
+        libasound2-dev \
+        libportaudio2 \
+        portaudio19-dev \
+        rubberband-cli \
+        sox && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install system packages needed for audio and ML
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    ffmpeg \
-    libsndfile1 \
-    libasound2-dev \
-    libjack-dev \
-    libportaudio2 \
-    portaudio19-dev \
-    fluidsynth \
-    sox \
-    rubberband-cli \
-    curl \
-    git \
-    cmake \
-    libavcodec-dev \
-    libavformat-dev \
-    libavutil-dev \
-    libsamplerate0-dev \
-    libaubio-dev \
-    && rm -rf /var/lib/apt/lists/*
+# ---------- Enable Git LFS ----------
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
+    apt-get install -y git-lfs && \
+    git lfs install || true
 
-# Set work directory
+# ---------- Set Working Directory ----------
 WORKDIR /app
 
-# Copy only requirements and install
-COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# ---------- Backend Dependencies (Node) ----------
+# Copy package files separately for caching
+COPY backend/package*.json ./backend/
+WORKDIR /app/backend
+RUN npm install
 
-# Copy your actual codebase
+# ---------- Frontend Dependencies ----------
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+
+# ---------- Python Dependencies ----------
+# Copy requirements.txt first for caching
+WORKDIR /app/backend
+COPY backend/requirements.txt ./
+# Install tensorflow first as it's large and rarely changes
+RUN pip3 install --no-cache-dir tensorflow-cpu==2.10.0
+# Then install other requirements
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# ---------- Copy Full Codebase ----------
+WORKDIR /app
 COPY . .
 
-# Default command (runs nothing by default)
-CMD ["bash"]
+# ---------- Build Frontend ----------
+WORKDIR /app/frontend
+RUN npm run build
+
+# ---------- Environment Variables ----------
+ENV TF_CPP_MIN_LOG_LEVEL=3
+ENV PORT=5000
+
+# ---------- Expose Port ----------
+EXPOSE 5000
+
+# ---------- Start Backend ----------
+WORKDIR /app/backend
+CMD ["node", "server.js"]
