@@ -6,12 +6,17 @@ const runPython = require("../utils/runPython.js");
 const ConvertAudio = require("../models/ConvertAudio.js");
 
 const convertAudio = async (req, res) => {
-    console.log("Incoming POST request to /convert with body:", req.body);
+    console.log("[convertAudio] Incoming POST request to /convert with body:", req.body);
     const { notes, instrument } = req.body;
     const uploadsDir = path.resolve("uploads");
     const midiPath = path.join(uploadsDir, "output.mid");
     const wavPath = path.join(uploadsDir, "output.wav");
     const scriptPath = path.join(__dirname, "../python/synth.py");
+
+    console.log("[convertAudio] uploadsDir:", uploadsDir);
+    console.log("[convertAudio] midiPath:", midiPath);
+    console.log("[convertAudio] wavPath:", wavPath);
+    console.log("[convertAudio] scriptPath:", scriptPath);
 
     const sanitizedNotes = notes.map(n => {
         const noteObj = n.note ? n : { note: n.note_name, ...n };
@@ -24,11 +29,14 @@ const convertAudio = async (req, res) => {
             confidence: noteObj.confidence || 1.0
         };
     });
+    console.log("[convertAudio] sanitizedNotes:", sanitizedNotes);
 
     try {
         await fs.mkdir(uploadsDir, { recursive: true });
+        console.log("[convertAudio] uploadsDir ensured.");
 
         const result = await runPython(scriptPath, [instrument], sanitizedNotes);
+        console.log("[convertAudio] Python script result:", result);
 
         if (result.status === "error") {
             throw new Error(`Python script error: ${result.message}`);
@@ -38,6 +46,7 @@ const convertAudio = async (req, res) => {
             resource_type: "video", // Important for audio files on Cloudinary
             folder: "hummify_audio",
         });
+        console.log("[convertAudio] cloudinaryResult:", cloudinaryResult);
 
         const audioDoc = await ConvertAudio.create({
             notes: sanitizedNotes,
@@ -47,12 +56,14 @@ const convertAudio = async (req, res) => {
             tempo: result.tempo || 120,
             duration: cloudinaryResult.duration
         });
+        console.log("[convertAudio] audioDoc created:", audioDoc);
 
         await Promise.allSettled([
             fs.unlink(midiPath),
             fs.unlink(wavPath),
             fs.unlink(path.join(uploadsDir, "raw_output.wav")).catch(() => { }) // Catch to prevent error if file doesn't exist
         ]);
+        console.log("[convertAudio] Temporary files cleaned up.");
 
         res.json({
             success: true,
@@ -66,7 +77,7 @@ const convertAudio = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("convertAudio error:", err);
+        console.error("[convertAudio] error:", err);
         res.status(500).json({
             success: false,
             error: err.message || "Audio conversion failed",
