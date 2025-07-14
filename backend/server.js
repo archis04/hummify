@@ -21,7 +21,9 @@ const app = express();
 
 // ===== 🟡 TOP-LEVEL REQUEST LOGGER =====
 app.use((req, res, next) => {
-  console.log(`[TOP-LEVEL] ${req.method} ${req.url}`);
+  if (req.path !== '/healthz') {
+    console.log(`[TOP-LEVEL] ${req.method} ${req.url}`);
+  }
   next();
 });
 
