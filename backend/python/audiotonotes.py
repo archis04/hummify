@@ -17,7 +17,7 @@ import tensorflow as tf
 
 # Configure detailed logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Changed to DEBUG for more verbose output
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler(sys.stderr)]
 )
@@ -71,7 +71,6 @@ def convert_to_wav(input_path, output_path):
 def run_crepe(y, sr, step_size):
     """Run CREPE in a separate process with timeout and medium model"""
     try:
-        logger.debug(f"Starting CREPE with step_size={step_size}ms")
         queue = multiprocessing.Queue()
         process = multiprocessing.Process(
             target=_crepe_worker,
@@ -87,9 +86,7 @@ def run_crepe(y, sr, step_size):
             return None, None, None, None
         
         if not queue.empty():
-            result = queue.get()
-            logger.debug(f"CREPE returned {len(result[0])} frames")
-            return result
+            return queue.get()
         
         logger.warning("CREPE returned no results")
         return None, None, None, None
@@ -105,7 +102,6 @@ def _crepe_worker(y, sr, step_size, queue):
             y, sr, viterbi=True, model_capacity="medium",
             step_size=step_size, center=True, verbose=0
         )
-        logger.debug(f"CREPE worker completed: {len(times_crepe)} frames")
         queue.put((times_crepe, f0_crepe, confidence, None))
     except Exception as e:
         logger.error(f"CREPE error in worker: {str(e)}")
@@ -113,7 +109,6 @@ def _crepe_worker(y, sr, step_size, queue):
 
 def get_vocal_pitch(y, sr, frame_length=1024, hop_length=256):
     """Optimized hybrid pitch detection with reduced computational load"""
-    logger.debug("Starting PYIN pitch detection")
     f0_pyin, voiced_flag, voiced_probs = librosa.pyin(
         y, fmin=75, fmax=1000, sr=sr,
         frame_length=frame_length, hop_length=hop_length,
@@ -122,7 +117,6 @@ def get_vocal_pitch(y, sr, frame_length=1024, hop_length=256):
     )
     n_frames = len(f0_pyin)
     frame_times = librosa.frames_to_time(np.arange(n_frames), sr=sr, hop_length=hop_length)
-    logger.debug(f"PYIN completed: {n_frames} frames")
 
     crepe_step_size = int(round(1000 * hop_length / sr))
     times_crepe, f0_crepe, confidence_crepe, _ = run_crepe(y, sr, crepe_step_size)
@@ -131,7 +125,6 @@ def get_vocal_pitch(y, sr, frame_length=1024, hop_length=256):
     confidences = np.zeros(n_frames)
 
     if times_crepe is not None:
-        logger.debug("Aligning CREPE results with PYIN frames")
         f0_crepe_aligned = np.interp(frame_times, times_crepe, f0_crepe, left=0, right=0)
         conf_crepe_aligned = np.interp(frame_times, times_crepe, confidence_crepe, left=0, right=0)
 
@@ -148,29 +141,24 @@ def get_vocal_pitch(y, sr, frame_length=1024, hop_length=256):
             else:
                 f0[i] = 0
                 confidences[i] = 0
-        logger.debug("Hybrid pitch fusion completed")
     else:
         logger.warning("Using PYIN only due to CREPE failure")
         f0 = np.nan_to_num(f0_pyin, nan=0)
         confidences = np.nan_to_num(voiced_probs, nan=0)
 
     f0 = medfilt(f0, kernel_size=5)
-    logger.debug(f"Pitch range: min={np.min(f0):.1f}Hz, max={np.max(f0):.1f}Hz")
     return f0, confidences, frame_times
 
 def detect_note_boundaries(y, sr, hop_length=256, frame_length=1024):
     """Optimized note boundary detection with higher thresholds"""
-    logger.debug("Calculating onset strength")
     onset_env = librosa.onset.onset_strength(
         y=y, sr=sr, hop_length=hop_length, aggregate=np.median,
         fmax=800, n_mels=32
     )
 
-    logger.debug("Calculating spectral flux")
     S = np.abs(librosa.stft(y, n_fft=frame_length, hop_length=hop_length))
     spectral_flux = np.sum(np.maximum(0, S[1:] - S[:-1]), axis=0)
 
-    logger.debug("Calculating RMS energy")
     rms = librosa.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length)[0]
     rms_diff = np.diff(rms, prepend=[0])
 
@@ -179,14 +167,12 @@ def detect_note_boundaries(y, sr, hop_length=256, frame_length=1024):
     rms_diff = librosa.util.normalize(rms_diff[:len(onset_env)])
 
     combined = 0.7 * onset_env + 0.2 * spectral_flux + 0.1 * rms_diff
-    logger.debug(f"Combined boundary detection signal: len={len(combined)}")
 
     onset_frames = librosa.onset.onset_detect(
         onset_envelope=combined, sr=sr, hop_length=hop_length,
         units='frames', pre_max=3, post_max=3, delta=0.05,
         wait=int(round(0.08 * sr / hop_length))
     )
-    logger.debug(f"Detected {len(onset_frames)} onset frames")
 
     rms_threshold = np.percentile(rms, 50)
     offset_frames = []
@@ -195,7 +181,6 @@ def detect_note_boundaries(y, sr, hop_length=256, frame_length=1024):
             rms[i] < 0.8 * rms[i + 1] and 
             rms[i] < rms_threshold):
             offset_frames.append(i)
-    logger.debug(f"Detected {len(offset_frames)} offset frames")
 
     onset_times = librosa.frames_to_time(onset_frames, sr=sr, hop_length=hop_length)
     offset_times = librosa.frames_to_time(offset_frames, sr=sr, hop_length=hop_length)
@@ -203,7 +188,6 @@ def detect_note_boundaries(y, sr, hop_length=256, frame_length=1024):
     all_boundaries = np.sort(np.unique(np.concatenate([
         [0], onset_times, offset_times, [len(y)/sr]
     ])))
-    logger.debug(f"Raw boundaries: {len(all_boundaries)} points")
     
     # Ensure final boundary is always preserved
     pruned = [all_boundaries[0]]
@@ -213,7 +197,6 @@ def detect_note_boundaries(y, sr, hop_length=256, frame_length=1024):
             pruned.append(t)
 
     logger.info(f"Detected {len(pruned)} pruned boundaries")
-    logger.debug(f"Pruned boundaries: {pruned}")
     return np.array(pruned)
 
 def get_dominant_pitch(f0, confidences, start_frame, end_frame):
@@ -226,7 +209,6 @@ def get_dominant_pitch(f0, confidences, start_frame, end_frame):
     valid_conf = segment_conf[valid_mask]
 
     if len(valid_f0) < 3:
-        logger.debug(f"Segment [{start_frame}:{end_frame}] - insufficient valid frames: {len(valid_f0)}")
         return None, 0.0
 
     sorted_idx = np.argsort(valid_f0)
@@ -237,21 +219,23 @@ def get_dominant_pitch(f0, confidences, start_frame, end_frame):
     total_weight = cum_weights[-1]
     median_idx = np.searchsorted(cum_weights, total_weight * 0.5)
     
-    result_f0 = sorted_f0[median_idx]
-    result_conf = sorted_conf[median_idx]
-    
-    logger.debug(f"Segment [{start_frame}:{end_frame}] - "
-                 f"frames: {len(segment_f0)}, valid: {len(valid_f0)}, "
-                 f"pitch: {result_f0:.1f}Hz, conf: {result_conf:.2f}")
-    
-    return result_f0, result_conf
+    return sorted_f0[median_idx], sorted_conf[median_idx]
 
 def apply_musical_corrections(notes, min_gap=0.05, min_duration=0.05, max_pitch_diff=0.5, min_volume_diff=10):
-    """Enhanced musical corrections with parameters matching the pipeline's characteristics"""
+    """Enhanced musical corrections with parameters matching the pipeline's characteristics
+    
+    Args:
+        notes: List of note dictionaries
+        min_gap: Maximum gap between notes to consider merging (seconds)
+        min_duration: Minimum duration for a note to be kept (seconds)
+        max_pitch_diff: Maximum pitch difference for merging (semitones)
+        min_volume_diff: Minimum volume difference to prevent merging
+        
+    Returns:
+        List of consolidated note dictionaries
+    """
     if not notes:
         return notes
-    
-    logger.debug(f"Starting musical corrections with {len(notes)} notes")
     
     consolidated = []
     current_note = notes[0]
@@ -301,7 +285,6 @@ def apply_musical_corrections(notes, min_gap=0.05, min_duration=0.05, max_pitch_
         f"pitchΔ={max_pitch_diff}semitones, volΔ={min_volume_diff}"
     )
     
-    logger.debug(f"Consolidated notes: {json.dumps(consolidated, indent=2)}")
     return consolidated
 
 def main():
@@ -327,7 +310,6 @@ def main():
             duration = len(y)/sr
             logger.info(f"Audio loaded: {len(y)} samples, {duration:.2f} seconds, SR: {sr}Hz")
             
-            logger.debug("Applying noise reduction and normalization")
             y = nr.reduce_noise(y=y, sr=sr, stationary=True, prop_decrease=0.5)
             y = librosa.util.normalize(y)
             
@@ -337,18 +319,15 @@ def main():
             logger.info("Running optimized pitch detection")
             f0, confidences, frame_times = get_vocal_pitch(y, sr, frame_length, hop_length)
             n_frames = len(f0)
-            logger.debug(f"Pitch tracking: {n_frames} frames")
             
             logger.info("Detecting note boundaries with tuned parameters")
             boundaries = detect_note_boundaries(y, sr, hop_length, frame_length)
-            logger.debug(f"Boundary times: {boundaries}")
             
             logger.info("Creating note segments")
             rms_energy = librosa.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length)[0]
             notes = []
             
             total_duration = len(y) / sr
-            logger.debug(f"Total audio duration: {total_duration:.2f}s")
             
             for i in range(len(boundaries) - 1):
                 start = boundaries[i]
@@ -356,27 +335,21 @@ def main():
                 dur = end - start
                 
                 if dur < 0.08:
-                    logger.debug(f"Skipping short segment: {start:.3f}-{end:.3f} ({dur:.3f}s)")
                     continue
                 
                 frame_start = max(0, min(n_frames, int(np.floor(start * sr / hop_length))))
                 frame_end = max(0, min(n_frames, int(np.ceil(end * sr / hop_length))))
                 
                 if frame_start >= frame_end:
-                    logger.debug(f"Invalid frame range: {frame_start} >= {frame_end}")
                     continue
                 
                 segment_rms = rms_energy[frame_start:frame_end]
-                mean_rms = np.mean(segment_rms)
                 
-                if mean_rms < 0.001:
-                    logger.debug(f"Skipping low-energy segment: {start:.3f}-{end:.3f} (RMS: {mean_rms:.4f})")
+                if np.mean(segment_rms) < 0.001:
                     continue
                 
                 pitch_hz, pitch_confidence = get_dominant_pitch(f0, confidences, frame_start, frame_end)
                 if pitch_hz is None or pitch_confidence < 0.4:
-                    logger.debug(f"Skipping low-confidence segment: {start:.3f}-{end:.3f} "
-                                 f"(conf: {pitch_confidence:.2f})")
                     continue
                 
                 volume = int(np.interp(np.percentile(segment_rms, 75), 
@@ -386,17 +359,14 @@ def main():
                 quantized_midi = round(midi_num)
                 note_name = librosa.midi_to_note(quantized_midi, cents=False)
                 
-                new_note = {
+                notes.append({
                     "note": note_name,
                     "start": round(start, 3),
                     "end": round(end, 3),
                     "duration": round(dur, 3),
                     "volume": volume
-                }
-                notes.append(new_note)
-                logger.debug(f"Created note: {json.dumps(new_note)}")
+                })
             
-            # Handle final segment if needed
             if boundaries[-1] < total_duration:
                 end_time = total_duration
                 dur = end_time - boundaries[-1]
@@ -405,8 +375,7 @@ def main():
                     frame_end = n_frames
                     
                     segment_rms = rms_energy[frame_start:frame_end]
-                    mean_rms = np.mean(segment_rms)
-                    if mean_rms >= 0.001:
+                    if np.mean(segment_rms) >= 0.001:
                         pitch_hz, pitch_confidence = get_dominant_pitch(f0, confidences, frame_start, frame_end)
                         if pitch_hz is not None and pitch_confidence >= 0.4:
                             volume = int(np.interp(np.percentile(segment_rms, 75), 
@@ -415,15 +384,13 @@ def main():
                             quantized_midi = round(midi_num)
                             note_name = librosa.midi_to_note(quantized_midi, cents=False)
                             
-                            new_note = {
+                            notes.append({
                                 "note": note_name,
                                 "start": round(boundaries[-1], 3),
                                 "end": round(end_time, 3),
                                 "duration": round(dur, 3),
                                 "volume": volume
-                            }
-                            notes.append(new_note)
-                            logger.debug(f"Created final note: {json.dumps(new_note)}")
+                            })
             
             logger.info(f"Created {len(notes)} raw notes")
             
@@ -443,7 +410,7 @@ def main():
             
             logger.info(f"Final note count: {len(final_notes)}")
             
-            # Output with "notes" key
+            # Output with "notes" key instead of "data"
             output = {
                 "success": True,
                 "notes": final_notes
@@ -457,8 +424,6 @@ def main():
             "error": str(e),
             "traceback": traceback.format_exc()
         }
-        logger.error(f"Processing failed: {str(e)}")
-        logger.debug(f"Traceback: {traceback.format_exc()}")
         print(json.dumps(error_info, indent=2))
         sys.exit(1)
 
