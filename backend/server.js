@@ -67,8 +67,14 @@ console.log("Setting up express.static...");
 app.use(express.static(frontendPath));
 console.log("express.static set up.");
 
+// Health check route for Render
+app.get('/healthz', (req, res) => {
+  res.send('OK');
+});
+
 console.log("Setting up catch-all route...");
 app.get(/^\/(?!api).*/, (req, res) => {
+  console.log("Serving frontend index.html for:", req.url);
   res.sendFile(path.resolve(frontendPath, 'index.html'));
 });
 console.log("Catch-all route set up.");
