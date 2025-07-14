@@ -59,12 +59,20 @@ console.log("Setting up /api/saved-audios route...");
 app.use("/api/saved-audios", savedAudioRoutes);
 console.log("/api/saved-audios route set up.");
 
+console.log("Setting up frontend static files...");
 const frontendPath = path.join(__dirname, '..', 'frontend', 'dist');
+console.log("Frontend path:", frontendPath);
 
+console.log("Setting up express.static...");
 app.use(express.static(frontendPath));
+console.log("express.static set up.");
+
+console.log("Setting up catch-all route...");
 app.get('*', (req, res) => {
+  console.log("Catch-all route hit for:", req.url);
   res.sendFile(path.resolve(frontendPath, 'index.html'));
 });
+console.log("Catch-all route set up.");
 
 // Start the server
 const PORT = process.env.PORT || 5000;
