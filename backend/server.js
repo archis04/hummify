@@ -27,15 +27,15 @@ connectDB();
 
 const app = express();
 
-// ✅ Middleware for logging
+// Top-level request logger
 app.use((req, res, next) => {
-  console.log(`Incoming ${req.method} request to ${req.url}`);
+  console.log(`[TOP-LEVEL] ${req.method} ${req.url}`);
   next();
 });
 
-// ✅ Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Increase body parser limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser());
 
 // ✅ CORS (now relaxed or can remove completely)
@@ -78,6 +78,12 @@ app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.resolve(frontendPath, 'index.html'));
 });
 console.log("Catch-all route set up.");
+
+// Add global error handler at the end
+app.use((err, req, res, next) => {
+  console.error('[GLOBAL ERROR HANDLER]', err);
+  res.status(500).json({ error: 'Internal server error', details: err.message });
+});
 
 // Start the server
 const PORT = process.env.PORT || 5000;
