@@ -68,8 +68,7 @@ app.use(express.static(frontendPath));
 console.log("express.static set up.");
 
 console.log("Setting up catch-all route...");
-app.get('*', (req, res) => {
-  console.log("Catch-all route hit for:", req.url);
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.resolve(frontendPath, 'index.html'));
 });
 console.log("Catch-all route set up.");
