@@ -14,21 +14,30 @@ const savedAudioRoutes = require("./routes/savedAudioRoutes.js");
 // Import Cleanup Scheduler
 const cleanupScheduler = require('./utils/cleanupScheduler');
 
+// Connect to DB
 connectDB();
 
 const app = express();
 
-// Top-level request logger
+// ===== 🟡 TOP-LEVEL REQUEST LOGGER =====
 app.use((req, res, next) => {
+  console.log(`[TOP-LEVEL] ${req.method} ${req.url}`);
   next();
 });
 
-// Increase body parser limits
+// ===== ✅ FILTERED API REQUEST LOGGER (EXCLUDING /healthz) =====
+app.use((req, res, next) => {
+  const isApi = req.url.startsWith('/api') && req.url !== '/healthz';
+  if (isApi) {
+    console.log(`[API REQUEST] ${req.method} ${req.url}`);
+  }
+  next();
+});
+
+// ===== 🔧 PARSERS & MIDDLEWARE =====
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser());
-
-// CORS
 app.use(cors({
   origin: true,
   credentials: true,
@@ -36,30 +45,39 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-// API Routes
+// ===== 🔌 ROUTES =====
 app.use("/api/audio", audioRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/saved-audios", savedAudioRoutes);
 
-// Serve frontend static files
+// ===== 🌐 FRONTEND STATIC FILES =====
 const frontendPath = path.join(__dirname, '..', 'frontend', 'dist');
 app.use(express.static(frontendPath));
 
-// Health check route
+// ===== 🩺 HEALTH CHECK ROUTE =====
 app.get('/healthz', (req, res) => {
   res.send('OK');
 });
 
-// Catch-all route for frontend
+// ===== 🌍 CATCH-ALL TO SERVE FRONTEND =====
 app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.resolve(frontendPath, 'index.html'));
 });
 
-// Global error handler
+// ===== ❌ GLOBAL ERROR HANDLER =====
 app.use((err, req, res, next) => {
-  res.status(500).json({ error: 'Internal server error', details: err.message });
+  console.error('[GLOBAL ERROR HANDLER]', {
+    message: err.message,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+  });
+  res.status(500).json({
+    error: 'Internal server error',
+    details: err.message,
+  });
 });
 
-// Start the server
+// ===== 🚀 START SERVER =====
 const PORT = process.env.PORT || 5000;
 app.listen(PORT);
